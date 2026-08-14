@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Library INA 1G</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      if (!sessionStorage.getItem("vl-user-session")) window.location.replace("login.html");
+    })();
+  </script>
+</head>
+<body>
+
+  <header class="app-header">
+    <nav class="nav">
+      <a class="brand" href="#" aria-label="Virtual Library INA 1G">
+        <span class="brand-mark">VL</span>
+        <span>Virtual Library INA 1G</span>
+      </a>
+      <div class="nav-actions">
+        <!-- Saludo + badge del plan -->
+        <span class="user-greeting" id="userGreeting"></span>
+        <a class="plan-badge nav-plan-badge" id="planBadge" href="planes.html" title="Ver planes"></a>
+
+        <!-- Botones de navegacion -->
+        <a class="icon-button" href="perfil.html" style="text-decoration:none;display:inline-flex;align-items:center;">Mi perfil</a>
+        <button class="icon-button active" id="viewAllButton"       type="button">Todos</button>
+        <button class="icon-button"        id="viewFavoritesButton" type="button">Favoritos</button>
+
+        <!-- Toggle de tema siempre visible -->
+        <button class="theme-toggle" id="themeToggle" type="button">
+          <span class="theme-icon" id="themeIcon">&#9728;</span>
+          <span id="themeLabel">Claro</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div class="page-wrap">
+
+      <!-- Barra de herramientas -->
+      <div class="catalog-toolbar">
+        <label class="search-box">
+          <span>BUSCAR</span>
+          <input type="search" id="searchInput" placeholder="Titulo, autor o categoria">
+        </label>
+
+        <label class="select-box">
+          <span>CATEGORIA</span>
+          <select id="categoryFilter">
+            <option value="Todas">Todas</option>
+            <option value="Programacion">Programacion</option>
+            <option value="Literatura">Literatura</option>
+            <option value="Ciencia">Ciencia</option>
+            <option value="Historia">Historia</option>
+            <option value="Matematicas">Matematicas</option>
+          </select>
+        </label>
+
+        <label class="select-box">
+          <span>ORDEN</span>
+          <select id="sortFilter">
+            <option value="title">Titulo</option>
+            <option value="author">Autor</option>
+            <option value="year">Año</option>
+          </select>
+        </label>
+
+        <div class="available-chip">
+          <span class="available-chip-num" id="availableBooks">0</span>
+          <span class="available-chip-label">DISPONIBLES</span>
+        </div>
+      </div>
+
+      <!-- Grid de libros -->
+      <div class="books-grid" id="booksGrid" aria-live="polite"></div>
+      <p class="empty-state" id="emptyState">No hay libros para mostrar.</p>
+
+    </div>
+  </main>
+
+  <!-- Dialog: detalle del libro -->
+  <dialog class="book-dialog" id="bookDialog">
+    <article class="dialog-content">
+      <button class="close-button" id="closeDialogButton" type="button" aria-label="Cerrar">&#x2715;</button>
+      <div class="dialog-cover" id="dialogCover"></div>
+      <div>
+        <p class="eyebrow" id="dialogCategory"></p>
+        <h2 id="dialogTitle"></h2>
+        <p class="dialog-author" id="dialogAuthor"></p>
+        <p id="dialogDescription"></p>
+        <div class="dialog-meta">
+          <span id="dialogYear"></span>
+          <span id="dialogStatus"></span>
+        </div>
+        <a class="dialog-read-link" id="dialogReadLink" href="#" target="_blank" rel="noopener">Leer libro</a>
+      </div>
+    </article>
+  </dialog>
+
+  <script src="script.js"></script>
+  <script>
+    (function () {
+      const raw     = sessionStorage.getItem("vl-user-session");
+      const session = raw ? JSON.parse(raw) : null;
+      const greeting  = document.getElementById("userGreeting");
+      const planBadge = document.getElementById("planBadge");
+
+      if (session && greeting) {
+        greeting.textContent = "Hola, " + session.name.split(" ")[0].toUpperCase();
+      }
+
+      if (session && planBadge) {
+        const expired = session.planExpiry && Date.now() > session.planExpiry;
+        const key     = (expired ? "free" : session.plan) || "free";
+        const badges  = {
+          free:    { label: "Gratis",   cls: "plan-badge-free"    },
+          silver:  { label: "Plata",    cls: "plan-badge-silver"  },
+          diamond: { label: "Diamante", cls: "plan-badge-diamond" }
+        };
+        const b = badges[key] || badges.free;
+        planBadge.textContent = b.label;
+        planBadge.classList.add(b.cls);
+      }
+    })();
+  </script>
+</body>
+</html>

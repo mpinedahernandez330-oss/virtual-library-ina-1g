@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Library INA 1G</title>
+  <link rel="stylesheet" href="cdg.css">
+</head>
+<body>
+  <header class="app-header">
+    <nav class="nav">
+      <a class="brand" href="#" aria-label="Virtual Library INA 1G">
+        <span class="brand-mark">VL</span>
+        <span>Virtual Library INA 1G</span>
+      </a>
+
+      <div class="nav-actions" aria-label="Vista del catalogo">
+        <button class="icon-button active" id="viewAllButton" type="button" title="Todos" aria-label="Todos">Todos</button>
+        <button class="icon-button" id="viewFavoritesButton" type="button" title="Favoritos" aria-label="Favoritos">Favoritos</button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="library-shell">
+      <aside class="sidebar" aria-label="Panel de biblioteca">
+        <div class="summary-panel">
+          <p class="eyebrow">Catalogo</p>
+          <h1>Virtual Library INA 1G</h1>
+
+          <div class="stats">
+            <div>
+              <strong id="totalBooks">0</strong>
+              <span>Libros</span>
+            </div>
+            <div>
+              <strong id="favoriteBooks">0</strong>
+              <span>Favoritos</span>
+            </div>
+            <div>
+              <strong id="availableBooks">0</strong>
+              <span>Disponibles</span>
+            </div>
+          </div>
+        </div>
+
+        <form class="book-form" id="bookForm">
+          <h2>Registrar libro</h2>
+
+          <label>
+            Titulo
+            <input type="text" id="titleInput" required maxlength="80">
+          </label>
+
+          <label>
+            Autor
+            <input type="text" id="authorInput" required maxlength="70">
+          </label>
+
+          <div class="form-grid">
+            <label>
+              Categoria
+              <select id="categoryInput" required>
+                <option value="Programacion">Programacion</option>
+                <option value="Literatura">Literatura</option>
+                <option value="Ciencia">Ciencia</option>
+                <option value="Historia">Historia</option>
+                <option value="Matematicas">Matematicas</option>
+              </select>
+            </label>
+
+            <label>
+              A&ntilde;o
+              <input type="number" id="yearInput" min="1000" max="2099" value="2026">
+            </label>
+          </div>
+
+          <label>
+            Enlace para leer
+            <input type="url" id="linkInput" placeholder="https://ejemplo.com/libro.pdf">
+          </label>
+
+          <label>
+            Descripcion
+            <textarea id="descriptionInput" rows="3" maxlength="180"></textarea>
+          </label>
+
+          <button class="primary-button" type="submit">Agregar libro</button>
+        </form>
+      </aside>
+
+      <section class="catalog">
+        <div class="catalog-toolbar">
+          <label class="search-box">
+            <span>Buscar</span>
+            <input type="search" id="searchInput" placeholder="Titulo, autor o categoria">
+          </label>
+
+          <label class="select-box">
+            <span>Categoria</span>
+            <select id="categoryFilter">
+              <option value="Todas">Todas</option>
+              <option value="Programacion">Programacion</option>
+              <option value="Literatura">Literatura</option>
+              <option value="Ciencia">Ciencia</option>
+              <option value="Historia">Historia</option>
+              <option value="Matematicas">Matematicas</option>
+            </select>
+          </label>
+
+          <label class="select-box">
+            <span>Orden</span>
+            <select id="sortFilter">
+              <option value="title">Titulo</option>
+              <option value="author">Autor</option>
+              <option value="year">A&ntilde;o</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="books-grid" id="booksGrid" aria-live="polite"></div>
+        <p class="empty-state" id="emptyState">No hay libros para mostrar.</p>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="book-dialog" id="bookDialog">
+    <article class="dialog-content">
+      <button class="close-button" id="closeDialogButton" type="button" aria-label="Cerrar">x</button>
+      <div class="dialog-cover" id="dialogCover"></div>
+
+      <div>
+        <p class="eyebrow" id="dialogCategory"></p>
+        <h2 id="dialogTitle"></h2>
+        <p class="dialog-author" id="dialogAuthor"></p>
+        <p id="dialogDescription"></p>
+
+        <div class="dialog-meta">
+          <span id="dialogYear"></span>
+          <span id="dialogStatus"></span>
+        </div>
+
+        <a class="dialog-read-link" id="dialogReadLink" href="#" target="_blank" rel="noopener">
+          Leer libro
+        </a>
+      </div>
+    </article>
+  </dialog>
+
+  <script src="scrpt.js"></script>
+</body>
+</html>

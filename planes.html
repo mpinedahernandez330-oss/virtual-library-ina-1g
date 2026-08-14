@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planes - Virtual Library INA 1G</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      if (!sessionStorage.getItem("vl-user-session")) window.location.replace("login.html");
+    })();
+  </script>
+</head>
+<body>
+
+  <header class="app-header">
+    <nav class="nav">
+      <a class="brand" href="index.html" aria-label="Virtual Library INA 1G">
+        <span class="brand-mark">VL</span>
+        <span>Virtual Library INA 1G</span>
+      </a>
+      <div class="nav-actions">
+        <a class="icon-button" href="index.html" style="text-decoration:none;">Volver</a>
+        <button class="theme-toggle" id="themeToggle" type="button">
+          <span id="themeLabel">Claro</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="planes-main">
+
+    <div class="planes-header">
+      <p class="eyebrow">Suscripciones</p>
+      <h1 class="planes-title">Elige tu plan</h1>
+      <p class="planes-subtitle">Accede a mas contenido con nuestros planes premium</p>
+      <div class="plan-actual-banner hidden" id="planActualBanner"></div>
+    </div>
+
+    <div class="planes-grid">
+
+      <!-- Plan Gratis -->
+      <div class="plan-card plan-free">
+        <div class="plan-icon">Gratis</div>
+        <h2 class="plan-name">Gratis</h2>
+        <div class="plan-price">
+          <span class="plan-amount">$0</span>
+          <span class="plan-period">siempre</span>
+        </div>
+        <ul class="plan-features">
+          <li>5 libros por dia</li>
+          <li>Acceso al catalogo completo</li>
+          <li>Guardar favoritos</li>
+          <li>Sin descargas</li>
+          <li>Limite diario de lectura</li>
+        </ul>
+        <button class="plan-btn plan-btn-free" id="btnFree" type="button">Plan actual</button>
+      </div>
+
+      <!-- Plan Plata -->
+      <div class="plan-card plan-silver">
+        <div class="plan-icon plan-icon-silver">Plata</div>
+        <h2 class="plan-name">Plata</h2>
+        <div class="plan-price">
+          <span class="plan-amount">$2.50</span>
+          <span class="plan-period">/ 3 semanas</span>
+        </div>
+        <ul class="plan-features">
+          <li>Libros ilimitados</li>
+          <li>Acceso al catalogo completo</li>
+          <li>Guardar favoritos</li>
+          <li>Sin limite diario</li>
+          <li>Sin descargas</li>
+        </ul>
+        <button class="plan-btn plan-btn-silver" id="btnSilver" type="button">Suscribirse — $2.50</button>
+      </div>
+
+      <!-- Plan Diamante -->
+      <div class="plan-card plan-diamond">
+        <div class="plan-badge-top">Mas popular</div>
+        <div class="plan-icon plan-icon-diamond">Diamante</div>
+        <h2 class="plan-name">Diamante</h2>
+        <div class="plan-price">
+          <span class="plan-amount">$5.00</span>
+          <span class="plan-period">/ 1 mes</span>
+        </div>
+        <ul class="plan-features">
+          <li>Libros ilimitados</li>
+          <li>Acceso al catalogo completo</li>
+          <li>Guardar favoritos</li>
+          <li>Sin limite diario</li>
+          <li>Descargar libros</li>
+        </ul>
+        <button class="plan-btn plan-btn-diamond" id="btnDiamond" type="button">Suscribirse — $5.00</button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modal de pago simulado -->
+  <dialog class="pay-dialog" id="payDialog">
+    <div class="pay-dialog-content">
+      <button class="close-button" id="closePayDialog" type="button" aria-label="Cerrar">x</button>
+      <div class="pay-icon" id="payIcon"></div>
+      <h2 class="pay-title" id="payTitle"></h2>
+      <p class="pay-desc" id="payDesc"></p>
+      <div class="pay-sim-box">
+        <p class="pay-sim-label">Simulacion de pago</p>
+        <p class="pay-sim-note">En produccion aqui se conectaria la pasarela de pagos real. Por ahora confirma para activar el plan de prueba.</p>
+      </div>
+      <div class="pay-actions">
+        <button class="primary-button pay-confirm-btn" id="payConfirm" type="button">Confirmar y activar</button>
+        <button class="pay-cancel-btn" id="payCancel" type="button">Cancelar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal de exito -->
+  <dialog class="pay-dialog" id="successDialog">
+    <div class="pay-dialog-content" style="text-align:center;">
+      <div class="pay-icon" style="font-size:56px;margin-bottom:8px;">OK</div>
+      <h2 class="pay-title">Plan activado!</h2>
+      <p class="pay-desc" id="successMessage"></p>
+      <button class="primary-button" id="goLibrary" type="button" style="width:100%;margin-top:8px;">Ir a la biblioteca</button>
+    </div>
+  </dialog>
+
+  <script src="script.js"></script>
+  <script src="planes.js"></script>
+</body>
+</html>

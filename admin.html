@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Virtual Library INA 1G</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // Limpiar clave de sesion vieja si existe con formato incorrecto
+    (function() {
+      const s = sessionStorage.getItem("vl-admin-session");
+      // Solo aceptar el valor exacto "true"
+      if (s && s !== "true") sessionStorage.removeItem("vl-admin-session");
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PANTALLA DE LOGIN DEL ADMINISTRADOR
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-logo">
+        <span class="brand-mark">VL</span>
+      </div>
+      <h1 class="login-title">Panel de Administrador</h1>
+      <p class="login-subtitle">Virtual Library INA 1G</p>
+
+      <form class="login-form" id="loginForm" autocomplete="off">
+
+        <!-- Nombre guardado (se muestra si ya inicio sesion antes) -->
+        <div class="saved-user-box hidden" id="savedUserBox">
+          <div class="saved-user-avatar" id="savedUserAvatar"></div>
+          <div class="saved-user-info">
+            <span class="saved-user-name" id="savedUserName"></span>
+            <button class="saved-user-change" id="changeUserBtn" type="button">No soy yo</button>
+          </div>
+        </div>
+
+        <!-- Campo de nombre -->
+        <label id="userFieldWrap">
+          Nombre
+          <input type="text" id="loginUser" autocomplete="username" placeholder="Tu nombre">
+        </label>
+
+        <label>
+          Contrasena
+          <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Contrasena">
+        </label>
+
+        <p class="login-error hidden" id="loginError">
+          Nombre o contrasena incorrectos.
+        </p>
+
+        <button class="primary-button login-btn" type="submit">Entrar</button>
+      </form>
+
+      <a class="back-link" href="index.html">Volver al catalogo</a>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PANEL DE ADMINISTRADOR
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="admin-panel hidden" id="adminPanel">
+
+    <!-- Cabecera igual a la imagen: fondo oscuro, badge Administrador verde, botones planos -->
+    <header class="app-header admin-header-dark">
+      <nav class="nav">
+        <a class="brand" href="index.html" aria-label="Virtual Library INA 1G">
+          <span class="brand-mark">VL</span>
+          <span>Virtual Library INA 1G</span>
+        </a>
+
+        <div class="nav-actions">
+          <span class="admin-badge-green">Administrador</span>
+          <button class="nav-flat-btn" id="statsToggleBtn" type="button">Estadisticas</button>
+          <button class="nav-flat-btn" id="logoutButton" type="button">Cerrar sesion</button>
+          <button class="nav-flat-btn theme-toggle" id="themeToggle" type="button">
+            <span id="themeLabel">Oscuro</span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="admin-page-wrap">
+
+        <!-- ── Stats rapidos + boton Ver libros (fila superior) ── -->
+        <div class="admin-quick-stats">
+          <div class="aqs-item">
+            <strong id="totalBooks">0</strong>
+            <span>LIBROS</span>
+          </div>
+          <div class="aqs-item">
+            <strong id="favoriteBooks">0</strong>
+            <span>FAVORITOS</span>
+          </div>
+          <div class="aqs-item">
+            <strong id="availableBooks">0</strong>
+            <span>DISPONIBLES</span>
+          </div>
+          <button class="ver-libros-btn" id="verLibrosBtn" type="button">
+            Ver libros
+          </button>
+        </div>
+
+        <!-- ── Formulario: Registrar libro ── -->
+        <form class="book-form" id="bookForm">
+          <h2>Registrar libro</h2>
+
+          <div class="form-grid">
+            <label>
+              TITULO
+              <input type="text" id="titleInput" required maxlength="80" placeholder="">
+            </label>
+            <label>
+              AUTOR
+              <input type="text" id="authorInput" required maxlength="70" placeholder="">
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              CATEGORIA
+              <select id="categoryInput" required>
+                <option value="Programacion">Programacion</option>
+                <option value="Literatura">Literatura</option>
+                <option value="Ciencia">Ciencia</option>
+                <option value="Historia">Historia</option>
+                <option value="Matematicas">Matematicas</option>
+              </select>
+            </label>
+            <label>
+              AÑO
+              <input type="number" id="yearInput" min="1000" max="2099" value="2026">
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <!-- Portada del libro -->
+            <label>
+              PORTADA DEL LIBRO
+              <div class="cover-upload-area" id="coverUploadArea">
+                <div class="cover-upload-placeholder" id="coverPlaceholder">
+                  <span class="cover-upload-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                  </span>
+                  <span>CLIC O ARRASTRA IMAGEN</span>
+                  <span class="cover-upload-hint">JPG, PNG, WEBP - MAX 2 MB</span>
+                </div>
+                <img class="cover-preview hidden" id="coverPreview" alt="Vista previa">
+                <button class="cover-remove-btn hidden" id="coverRemoveBtn" type="button">x</button>
+              </div>
+              <input type="file" id="coverInput" accept="image/*" style="display:none">
+            </label>
+
+            <!-- Enlace para leer -->
+            <label>
+              ENLACE PARA LEER
+              <textarea
+                id="linkInput"
+                rows="5"
+                placeholder="https://drive.google.com/..."
+                style="resize:vertical;min-height:120px;"
+              ></textarea>
+            </label>
+          </div>
+
+          <label>
+            DESCRIPCION
+            <textarea id="descriptionInput" rows="3" maxlength="250"></textarea>
+          </label>
+
+          <div class="form-footer-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="availableInput" checked>
+              Disponible
+            </label>
+            <button class="primary-button" type="submit">Agregar libro</button>
+          </div>
+        </form>
+
+        <!-- ── Gestion de categorias ── -->
+        <div class="category-manager book-form">
+          <h2>Categorias</h2>
+          <div id="categoryList" class="category-list"></div>
+          <div class="category-add-row">
+            <input type="text" id="newCategoryInput" placeholder="Nueva categoria" maxlength="40">
+            <button class="primary-button" id="addCategoryButton" type="button">Agregar</button>
+          </div>
+        </div>
+
+      </div><!-- fin admin-page-wrap -->
+    </main>
+
+    <!-- ── Panel lateral: catalogo de libros ── -->
+    <div class="libros-panel hidden" id="librosPanel">
+      <div class="libros-panel-inner">
+        <div class="libros-panel-header">
+          <h2>Catalogo de libros</h2>
+          <button class="close-button" id="closeLibrosPanel" type="button">x</button>
+        </div>
+
+        <div class="libros-panel-toolbar">
+          <input type="search" id="searchInput" placeholder="Buscar por titulo, autor o categoria">
+          <select id="categoryFilter">
+            <option value="Todas">Todas</option>
+          </select>
+          <select id="sortFilter">
+            <option value="title">Titulo</option>
+            <option value="author">Autor</option>
+            <option value="year">Año</option>
+          </select>
+        </div>
+
+        <div class="books-grid" id="booksGrid" aria-live="polite"></div>
+        <p class="empty-state" id="emptyState">No hay libros para mostrar.</p>
+      </div>
+    </div>
+
+    <!-- Dialog: detalle de libro -->
+    <dialog class="book-dialog" id="bookDialog">
+      <article class="dialog-content">
+        <button class="close-button" id="closeDialogButton" type="button" aria-label="Cerrar">x</button>
+        <div class="dialog-cover" id="dialogCover"></div>
+        <div>
+          <p class="eyebrow" id="dialogCategory"></p>
+          <h2 id="dialogTitle"></h2>
+          <p class="dialog-author" id="dialogAuthor"></p>
+          <p id="dialogDescription"></p>
+          <div class="dialog-meta">
+            <span id="dialogYear"></span>
+            <span id="dialogStatus"></span>
+          </div>
+          <a class="dialog-read-link" id="dialogReadLink" href="#" target="_blank" rel="noopener">Leer libro</a>
+        </div>
+      </article>
+    </dialog>
+
+  </div><!-- fin admin-panel -->
+
+  <!-- Dialog: editar libro -->
+  <dialog class="edit-dialog" id="editDialog">
+    <div class="edit-dialog-inner">
+      <button class="close-button" id="closeEditDialog" type="button">x</button>
+      <h2>Editar libro</h2>
+      <form class="book-form" id="editForm" style="box-shadow:none;border:none;padding:0;">
+        <input type="hidden" id="editBookId">
+        <label>Titulo<input type="text" id="editTitle" required maxlength="80"></label>
+        <label>Autor<input type="text" id="editAuthor" required maxlength="70"></label>
+        <div class="form-grid">
+          <label>Categoria<select id="editCategory"></select></label>
+          <label>Año<input type="number" id="editYear" min="1000" max="2099"></label>
+        </div>
+        <label>
+          Enlace para leer
+          <textarea id="editLink" rows="3" placeholder="https://drive.google.com/..." style="resize:vertical;"></textarea>
+        </label>
+        <label>Descripcion<textarea id="editDescription" rows="3" maxlength="250"></textarea></label>
+        <label class="checkbox-label"><input type="checkbox" id="editAvailable"> Disponible</label>
+        <button class="primary-button" type="submit">Guardar cambios</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Dialog: estadisticas -->
+  <dialog class="stats-dialog" id="statsDialog">
+    <div class="stats-dialog-inner">
+      <button class="close-button" id="closeStatsDialog" type="button">x</button>
+      <h2>Estadisticas</h2>
+      <div class="admin-stats-grid" id="adminStatsGrid"></div>
+      <h3 style="margin-top:24px;">Libros mas leidos</h3>
+      <div id="topBooksList"></div>
+      <h3 style="margin-top:24px;">Usuarios registrados</h3>
+      <div id="usersList"></div>
+    </div>
+  </dialog>
+
+  <script src="admin.js"></script>
+  <script>
+    // Toggle de tema (independiente de script.js)
+    (function() {
+      const btn   = document.getElementById("themeToggle");
+      const label = document.getElementById("themeLabel");
+      const KEY   = "vl-theme";
+      function apply(dark) {
+        document.body.classList.toggle("dark", dark);
+        if (label) label.textContent = dark ? "Claro" : "Oscuro";
+      }
+      apply(localStorage.getItem(KEY) === "dark");
+      if (btn) btn.addEventListener("click", function() {
+        const dark = !document.body.classList.contains("dark");
+        localStorage.setItem(KEY, dark ? "dark" : "light");
+        apply(dark);
+      });
+    })();
+  </script>
+</body>
+</html>

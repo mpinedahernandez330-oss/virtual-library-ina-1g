@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Perfil - Virtual Library INA 1G</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      if (!sessionStorage.getItem("vl-user-session")) window.location.replace("login.html");
+    })();
+  </script>
+</head>
+<body>
+
+  <header class="app-header">
+    <nav class="nav">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">VL</span>
+        <span>Virtual Library INA 1G</span>
+      </a>
+      <div class="nav-actions">
+        <a class="icon-button" href="index.html" style="text-decoration:none;display:inline-flex;align-items:center;">Libros</a>
+        <button class="icon-button user-logout" id="logoutBtn" type="button">Salir</button>
+        <button class="theme-toggle" id="themeToggle" type="button">
+          <span id="themeLabel">Claro</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="perfil-main">
+
+    <!-- Tarjeta de perfil -->
+    <div class="perfil-header-card">
+      <div class="perfil-avatar-wrap" id="perfilAvatarWrap" title="Cambiar foto de perfil">
+        <div class="perfil-avatar" id="perfilAvatar"></div>
+        <div class="perfil-avatar-overlay">&#128247;</div>
+        <input type="file" id="avatarFileInput" accept="image/*" style="display:none;">
+      </div>
+      <div class="perfil-info">
+        <h1 id="perfilNombre"></h1>
+        <p id="perfilEmail"></p>
+        <div id="perfilPlanBadge" class="plan-badge"></div>
+      </div>
+      <div class="perfil-stats-row">
+        <div class="perfil-stat">
+          <strong id="statLeidos">0</strong>
+          <span>Leidos</span>
+        </div>
+        <div class="perfil-stat">
+          <strong id="statFavoritos">0</strong>
+          <span>Favoritos</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan activo -->
+    <div class="perfil-section" id="planSection">
+      <h2 class="perfil-section-title">Mi plan</h2>
+      <div class="perfil-plan-card" id="planCard"></div>
+      <a class="primary-button" href="planes.html" style="text-decoration:none;display:inline-flex;align-items:center;margin-top:14px;padding:0 20px;min-height:42px;">Cambiar plan</a>
+    </div>
+
+    <!-- Historial de lectura -->
+    <div class="perfil-section">
+      <h2 class="perfil-section-title">Historial de lectura</h2>
+      <div class="historial-list" id="historialList"></div>
+      <p class="empty-state" id="historialEmpty">Aun no has leido ningun libro.</p>
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+  <script src="perfil.js"></script>
+</body>
+</html>

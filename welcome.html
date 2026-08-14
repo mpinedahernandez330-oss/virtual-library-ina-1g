@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Library INA 1G</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    (function () {
+      if (sessionStorage.getItem("vl-user-session")) window.location.replace("index.html");
+    })();
+  </script>
+</head>
+<body>
+
+  <header class="app-header">
+    <nav class="nav">
+      <a class="brand" href="welcome.html" aria-label="Virtual Library INA 1G">
+        <span class="brand-mark">VL</span>
+        <span>Virtual Library INA 1G</span>
+      </a>
+      <div class="nav-actions">
+        <a class="icon-button" href="login.html" style="text-decoration:none;">Iniciar sesion</a>
+        <a class="primary-button" href="login.html#register" style="text-decoration:none;display:flex;align-items:center;padding:0 18px;">Registrarse</a>
+        <button class="theme-toggle" id="themeToggle" type="button">
+          <span id="themeLabel">Claro</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section class="welcome-hero">
+    <div class="welcome-hero-content">
+      <div class="welcome-logo-wrap">
+        <span class="brand-mark auth-logo-glow" style="width:80px;height:80px;font-size:28px;border-radius:20px;">VL</span>
+        <div class="auth-logo-ring"></div>
+      </div>
+      <p class="welcome-eyebrow">BIENVENIDO A</p>
+      <h1 class="welcome-title">Virtual Library<br><span class="welcome-title-accent">INA 1G</span></h1>
+      <p class="welcome-desc">Explora nuestra coleccion de libros digitales. Lee cuando quieras, donde quieras.</p>
+      <div class="welcome-actions">
+        <a class="primary-button welcome-cta" href="login.html">Empezar ahora</a>
+        <a class="welcome-cta-outline" href="#planes">Ver planes</a>
+      </div>
+    </div>
+    <div class="welcome-hero-visual">
+      <div class="welcome-books-preview">
+        <div class="wb-card" style="--c:#6e7dff">Lib</div>
+        <div class="wb-card wb-card--mid" style="--c:#3fb984">ros</div>
+        <div class="wb-card wb-card--back" style="--c:#f59e0b">VL</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARACTERISTICAS -->
+  <section class="welcome-features">
+    <div class="welcome-section-inner">
+      <p class="eyebrow" style="text-align:center;">Que ofrecemos?</p>
+      <h2 class="welcome-section-title">Todo lo que necesitas para leer</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">B</div>
+          <h3>Busqueda rapida</h3>
+          <p>Encuentra cualquier libro por titulo, autor o categoria en segundos.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">D</div>
+          <h3>Lee en cualquier dispositivo</h3>
+          <p>Compatible con celular, tablet y computadora. Sin descargas necesarias.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">R</div>
+          <h3>Califica y resena</h3>
+          <p>Deja tu opinion sobre los libros y ayuda a otros lectores a elegir.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">F</div>
+          <h3>Guarda favoritos</h3>
+          <p>Marca los libros que mas te gustan para encontrarlos facilmente.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">H</div>
+          <h3>Tu historial</h3>
+          <p>Revisa todos los libros que has leido y retoma donde lo dejaste.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">M</div>
+          <h3>Modo oscuro</h3>
+          <p>Cuida tus ojos con el modo oscuro activable en cualquier momento.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLANES -->
+  <section class="welcome-planes" id="planes">
+    <div class="welcome-section-inner">
+      <p class="eyebrow" style="text-align:center;">Suscripciones</p>
+      <h2 class="welcome-section-title">Elige tu plan</h2>
+      <div class="planes-grid">
+        <div class="plan-card plan-free">
+          <div class="plan-icon">Gratis</div>
+          <h2 class="plan-name">Gratis</h2>
+          <div class="plan-price">
+            <span class="plan-amount">$0</span>
+            <span class="plan-period">siempre</span>
+          </div>
+          <ul class="plan-features">
+            <li>5 libros por dia</li>
+            <li>Catalogo completo</li>
+            <li>Sin descargas</li>
+          </ul>
+          <a class="plan-btn plan-btn-free" href="login.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">Comenzar gratis</a>
+        </div>
+        <div class="plan-card plan-silver">
+          <div class="plan-icon">Plata</div>
+          <h2 class="plan-name">Plata</h2>
+          <div class="plan-price">
+            <span class="plan-amount">$2.50</span>
+            <span class="plan-period">/ 3 semanas</span>
+          </div>
+          <ul class="plan-features">
+            <li>Libros ilimitados</li>
+            <li>Catalogo completo</li>
+            <li>Sin descargas</li>
+          </ul>
+          <a class="plan-btn plan-btn-silver" href="login.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">Suscribirse</a>
+        </div>
+        <div class="plan-card plan-diamond">
+          <div class="plan-badge-top">Mas popular</div>
+          <div class="plan-icon">Diamante</div>
+          <h2 class="plan-name">Diamante</h2>
+          <div class="plan-price">
+            <span class="plan-amount">$5.00</span>
+            <span class="plan-period">/ 1 mes</span>
+          </div>
+          <ul class="plan-features">
+            <li>Libros ilimitados</li>
+            <li>Catalogo completo</li>
+            <li>Descargar libros</li>
+          </ul>
+          <a class="plan-btn plan-btn-diamond" href="login.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">Suscribirse</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="welcome-footer">
+    <p>2026 Virtual Library INA 1G — Todos los derechos reservados</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

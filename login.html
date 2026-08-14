@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesion - Virtual Library INA 1G</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="auth-page">
+
+    <!-- Logo con brillo -->
+    <div class="auth-brand">
+      <div class="auth-logo-wrap">
+        <span class="brand-mark auth-logo-glow">VL</span>
+        <div class="auth-logo-ring"></div>
+      </div>
+      <div class="auth-brand-text">
+        <span class="auth-welcome-label">BIENVENIDO A</span>
+        <span class="auth-brand-name">Virtual Library INA 1G</span>
+      </div>
+    </div>
+
+    <!-- Pantalla: Iniciar sesion -->
+    <div class="auth-card" id="screenLogin">
+      <h1 class="auth-title">Iniciar sesion</h1>
+      <p class="auth-subtitle">Accede con tu cuenta para explorar el catalogo</p>
+
+      <form class="auth-form" id="loginForm" autocomplete="off" novalidate>
+        <label>
+          Correo Gmail
+          <input type="email" id="loginEmail" placeholder="tucorreo@gmail.com" required autocomplete="email">
+        </label>
+
+        <label>
+          Contrasena
+          <div class="input-password-wrap">
+            <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+            <button class="toggle-pass" type="button" data-target="loginPassword" aria-label="Mostrar contrasena">Ver</button>
+          </div>
+        </label>
+
+        <p class="auth-error hidden" id="loginError">Correo o contrasena incorrectos.</p>
+
+        <button class="primary-button auth-submit" type="submit">Iniciar sesion</button>
+      </form>
+
+      <button class="auth-link-btn" id="goForgot" type="button">Olvidaste tu contrasena?</button>
+      <hr class="auth-divider">
+      <p class="auth-switch">No tienes cuenta? <button class="auth-link-btn" id="goRegister" type="button">Registrate aqui</button></p>
+    </div>
+
+    <!-- Pantalla: Registrarse -->
+    <div class="auth-card hidden" id="screenRegister">
+      <h1 class="auth-title">Crear cuenta</h1>
+      <p class="auth-subtitle">Registrate con tu nombre y correo Gmail</p>
+
+      <form class="auth-form" id="registerForm" autocomplete="off" novalidate>
+        <label>
+          Nombre completo
+          <input type="text" id="regName" placeholder="Tu nombre completo" required maxlength="80">
+        </label>
+
+        <label>
+          Correo Gmail
+          <input type="email" id="regEmail" placeholder="tucorreo@gmail.com" required autocomplete="email">
+        </label>
+
+        <label>
+          Contrasena
+          <div class="input-password-wrap">
+            <input type="password" id="regPassword" placeholder="Minimo 6 caracteres" required minlength="6" autocomplete="new-password">
+            <button class="toggle-pass" type="button" data-target="regPassword" aria-label="Mostrar contrasena">Ver</button>
+          </div>
+        </label>
+
+        <p class="auth-error hidden"   id="registerError">Hubo un problema con el registro.</p>
+        <p class="auth-success hidden" id="registerSuccess">Cuenta creada. Ya puedes iniciar sesion.</p>
+
+        <button class="primary-button auth-submit" type="submit">Crear cuenta</button>
+      </form>
+
+      <hr class="auth-divider">
+      <p class="auth-switch">Ya tienes cuenta? <button class="auth-link-btn" id="goLoginFromRegister" type="button">Inicia sesion</button></p>
+    </div>
+
+    <!-- Pantalla: Recuperar contrasena -->
+    <div class="auth-card hidden" id="screenForgot">
+      <h1 class="auth-title">Recuperar contrasena</h1>
+      <p class="auth-subtitle">Escribe tu correo y te enviaremos las instrucciones</p>
+
+      <form class="auth-form" id="forgotForm" autocomplete="off" novalidate>
+        <label>
+          Correo Gmail
+          <input type="email" id="forgotEmail" placeholder="tucorreo@gmail.com" required autocomplete="email">
+        </label>
+
+        <p class="auth-error hidden" id="forgotError">No encontramos ese correo registrado.</p>
+
+        <div class="forgot-confirm hidden" id="forgotConfirm">
+          <div class="forgot-confirm-icon">Correo enviado</div>
+          <p class="forgot-confirm-text">
+            <strong>Simulacion:</strong> En produccion se enviaria un enlace de recuperacion a
+            <span id="forgotEmailShown"></span>.
+          </p>
+          <p class="forgot-confirm-hint">Tu contrasena actual esta guardada en tu cuenta. Regresa a iniciar sesion.</p>
+        </div>
+
+        <button class="primary-button auth-submit" id="forgotSubmitBtn" type="submit">Enviar instrucciones</button>
+      </form>
+
+      <hr class="auth-divider">
+      <p class="auth-switch"><button class="auth-link-btn" id="goLoginFromForgot" type="button">Volver a iniciar sesion</button></p>
+    </div>
+
+  </div>
+
+  <script src="user.js"></script>
+</body>
+</html>
