@@ -1,7 +1,7 @@
 // perfil.js — Pagina de perfil del usuario
 "use strict";
 
-const API         = "https://virtual-library-ina-1g.onrender.com/api";
+const API         = "http://localhost:3000/api";
 const SESSION_KEY = "vl-user-session";
 
 function getSession() {

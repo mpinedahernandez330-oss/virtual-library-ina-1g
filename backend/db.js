@@ -12,8 +12,7 @@ const pool = mysql.createPool({
   database:           process.env.DB_NAME     || "virtual_library",
   waitForConnections: true,
   connectionLimit:    10,
-  timezone:           "Z",
-  ssl:                { rejectUnauthorized: false }
+  timezone:           "Z"
 });
 
 // Verifica la conexion al arrancar

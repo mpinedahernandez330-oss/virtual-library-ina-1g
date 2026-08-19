@@ -1,7 +1,7 @@
 // script.js — Catalogo publico de Virtual Library
 "use strict";
 
-const API = "https://virtual-library-ina-1g.onrender.com/api";
+const API = "http://localhost:3000/api";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SESSION_KEY  = "vl-user-session";
