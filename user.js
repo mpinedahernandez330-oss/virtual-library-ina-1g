@@ -88,7 +88,7 @@ if (loginForm) {
       setSession(json.data);
       window.location.href = "index.html";
     } catch {
-      showError("loginError", "No se pudo conectar al servidor. Verifica que Laragon este corriendo.");
+      showError("loginError", "No se pudo conectar al servidor. Verifica que el servidor este corriendo.");
     } finally {
       setLoading("loginSubmitBtn", false);
     }
@@ -113,7 +113,7 @@ if (registerForm) {
 
     if (!name)                    { showError("registerError", "Escribe tu nombre completo."); return; }
     if (!email.endsWith("@gmail.com")) { showError("registerError", "Solo se aceptan correos @gmail.com."); return; }
-    if (password.length < 6)      { showError("registerError", "La contrasena debe tener minimo 6 caracteres."); return; }
+    if (!password)                { showError("registerError", "Escribe una contrasena."); return; }
 
     setLoading("registerSubmitBtn", true);
     try {
@@ -128,7 +128,7 @@ if (registerForm) {
       registerForm.reset();
       setTimeout(() => showScreen("screenLogin"), 2000);
     } catch {
-      showError("registerError", "No se pudo conectar al servidor. Verifica que Laragon este corriendo.");
+      showError("registerError", "No se pudo conectar al servidor. Verifica que el servidor este corriendo.");
     } finally {
       setLoading("registerSubmitBtn", false);
     }
