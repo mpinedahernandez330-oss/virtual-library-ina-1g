@@ -1,16 +1,15 @@
-// planes.js — Suscripciones conectadas a la API
+// planes.js — Planes conectados a la API SQLite
 "use strict";
 
 const API         = "http://localhost:3000/api";
 const SESSION_KEY = "vl-user-session";
 
 const PLANES = {
-  free:    { key: "free",    name: "Gratis",   icon: "📖", price: "$0",    days: null, canDownload: false, dailyLimit: 5        },
-  silver:  { key: "silver",  name: "Plata",    icon: "🥈", price: "$2.50", days: 21,   canDownload: false, dailyLimit: Infinity },
-  diamond: { key: "diamond", name: "Diamante", icon: "💎", price: "$5.00", days: 30,   canDownload: true,  dailyLimit: Infinity }
+  free:    { key: "free",    name: "Gratis",   icon: "📖", price: "$0",    days: null },
+  silver:  { key: "silver",  name: "Plata",    icon: "🥈", price: "$2.50", days: 21   },
+  diamond: { key: "diamond", name: "Diamante", icon: "💎", price: "$5.00", days: 30   }
 };
 
-// ── Sesion ────────────────────────────────────────────────────────────────────
 function getSession() {
   const s = sessionStorage.getItem(SESSION_KEY);
   return s ? JSON.parse(s) : null;
@@ -18,22 +17,15 @@ function getSession() {
 function updateSession(data) {
   const session = getSession();
   if (!session) return;
-  const updated = { ...session, ...data };
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, ...data }));
 }
 
-// ── UI: marcar plan activo ────────────────────────────────────────────────────
 function updateUI() {
   const session = getSession();
   if (!session) return;
-
-  // Si el plan expiro, revertir a free visualmente
   let planKey = session.plan || "free";
-  if (planKey !== "free" && session.planExpiry && Date.now() > new Date(session.planExpiry).getTime()) {
-    planKey = "free";
-  }
+  if (planKey !== "free" && session.planExpiry && Date.now() > session.planExpiry) planKey = "free";
 
-  // Banner plan activo
   const banner = document.getElementById("planActualBanner");
   if (banner && planKey !== "free" && session.planExpiry) {
     const plan    = PLANES[planKey];
@@ -42,7 +34,6 @@ function updateUI() {
     banner.classList.remove("hidden");
   }
 
-  // Marcar boton del plan activo
   const btnMap = { free: "btnFree", silver: "btnSilver", diamond: "btnDiamond" };
   Object.entries(btnMap).forEach(([key, btnId]) => {
     const btn = document.getElementById(btnId);
@@ -55,7 +46,6 @@ function updateUI() {
   });
 }
 
-// ── Modal de pago ─────────────────────────────────────────────────────────────
 const payDialog     = document.getElementById("payDialog");
 const successDialog = document.getElementById("successDialog");
 let pendingPlan     = null;
@@ -63,15 +53,11 @@ let pendingPlan     = null;
 function openPayDialog(planKey) {
   const session = getSession();
   if (!session) { window.location.href = "login.html"; return; }
-
   const plan  = PLANES[planKey];
   pendingPlan = planKey;
-
   document.getElementById("payIcon").textContent  = plan.icon;
   document.getElementById("payTitle").textContent = `Plan ${plan.name}`;
-  document.getElementById("payDesc").textContent  =
-    `${plan.price} — ${plan.days ? plan.days + " dias de acceso" : "acceso permanente"}`;
-
+  document.getElementById("payDesc").textContent  = `${plan.price} — ${plan.days ? plan.days + " dias de acceso" : "acceso permanente"}`;
   payDialog.showModal();
 }
 
@@ -83,7 +69,7 @@ async function confirmPay() {
   if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "Procesando..."; }
 
   try {
-    const res  = await fetch(API + "/users/" + session.id + "/plan", {
+    const res  = await fetch(API + "/usuarios/" + session.id + "/plan", {
       method:  "PUT",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ plan: pendingPlan })
@@ -91,9 +77,8 @@ async function confirmPay() {
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
 
-    // Calcular nueva fecha de expiracion localmente para actualizar sessionStorage
     const plan   = PLANES[pendingPlan];
-    const expiry = plan.days ? new Date(Date.now() + plan.days * 86400000).toISOString() : null;
+    const expiry = plan.days ? Date.now() + plan.days * 86400000 : null;
     updateSession({ plan: pendingPlan, planExpiry: expiry });
 
     payDialog.close();
@@ -110,16 +95,11 @@ async function confirmPay() {
   }
 }
 
-// ── Listeners ─────────────────────────────────────────────────────────────────
 document.getElementById("btnSilver") ?.addEventListener("click", () => openPayDialog("silver"));
 document.getElementById("btnDiamond")?.addEventListener("click", () => openPayDialog("diamond"));
 document.getElementById("payConfirm")?.addEventListener("click", confirmPay);
 document.getElementById("payCancel") ?.addEventListener("click", () => payDialog.close());
 document.getElementById("closePayDialog")?.addEventListener("click", () => payDialog.close());
-document.getElementById("goLibrary") ?.addEventListener("click", () => {
-  successDialog.close();
-  window.location.href = "index.html";
-});
+document.getElementById("goLibrary") ?.addEventListener("click", () => { successDialog.close(); window.location.href = "index.html"; });
 
-// ── Inicio ────────────────────────────────────────────────────────────────────
 updateUI();

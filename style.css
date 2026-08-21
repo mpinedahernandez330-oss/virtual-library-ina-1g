@@ -1,6 +1,4 @@
-/* ══════════════════════════════════════════════════════
-   MODO CLARO — colores vivos y llamativos pero limpios
-   ══════════════════════════════════════════════════════ */
+══ */
 :root {
   --bg:           #f0f4ff;
   --surface:      #ffffff;
@@ -535,7 +533,7 @@ textarea { resize: vertical; }
   line-height: 1.5;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clampatibilidad: 3;
   -webkit-box-orient: vertical;
 }
 
@@ -2488,7 +2486,7 @@ body.dark .plan-badge-silver {
 .book-description {
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clampatibilidad: 3;
   -webkit-box-orient: vertical;
 }
 

@@ -1,16 +1,16 @@
-// script.js — Catalogo publico de Virtual Library (sin backend, localStorage)
+// script.js — Catalogo Virtual Library (SQLite via API)
 "use strict";
 
-const STORAGE_KEY  = "virtual-library-books";
-const SESSION_KEY  = "vl-user-session";
-const REVIEWS_KEY  = "vl-reviews";
-const DAILY_KEY    = "vl-daily-reads";
+const API         = "http://localhost:3000/api";
+const SESSION_KEY = "vl-user-session";
+const REVIEWS_KEY = "vl-reviews";
+const DAILY_KEY   = "vl-daily-reads";
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 let books             = [];
 let showFavoritesOnly = false;
 
-// ── Referencias DOM ───────────────────────────────────────────────────────────
+// ── DOM ───────────────────────────────────────────────────────────────────────
 const booksGrid           = document.querySelector("#booksGrid");
 const emptyState          = document.querySelector("#emptyState");
 const searchInput         = document.querySelector("#searchInput");
@@ -37,34 +37,43 @@ function getSession() {
   const s = sessionStorage.getItem(SESSION_KEY);
   return s ? JSON.parse(s) : null;
 }
-
-// ── Libros desde localStorage ─────────────────────────────────────────────────
-const LIBROS_DEFAULT = [
-  { id:1,  title:"Pinocho",                  author:"Carlo Collodi",            category:"Literatura",   year:1883, description:"La historia del muneco de madera que suena con convertirse en un nino de verdad.", color:"#2d6cdf", available:1, favorite:0, featured:1, link:"" },
-  { id:2,  title:"Cenicienta",               author:"Charles Perrault",         category:"Literatura",   year:1697, description:"El cuento de la joven bondadosa que gracias a su hada madrina encuentra el amor.", color:"#d75a4a", available:1, favorite:0, featured:1, link:"" },
-  { id:3,  title:"Blancanieves",             author:"Hermanos Grimm",           category:"Literatura",   year:1812, description:"Una princesa huye de su malvada madrastra y encuentra refugio con siete enanitos.", color:"#7c3aed", available:1, favorite:0, featured:0, link:"" },
-  { id:4,  title:"La Bella Durmiente",       author:"Charles Perrault",         category:"Literatura",   year:1697, description:"Una princesa cae en un sueno profundo y solo el amor verdadero puede despertarla.", color:"#b7791f", available:1, favorite:0, featured:0, link:"" },
-  { id:5,  title:"La Caperucita Roja",       author:"Hermanos Grimm",           category:"Literatura",   year:1812, description:"Una nina valiente enfrenta al lobo feroz en el camino hacia la casa de su abuela.", color:"#0f766e", available:1, favorite:0, featured:0, link:"" },
-  { id:6,  title:"El Principito",            author:"Antoine de Saint-Exupery", category:"Literatura",   year:1943, description:"Un joven principe viaja por el universo buscando el significado del amor y la amistad.", color:"#1f8a70", available:1, favorite:0, featured:1, link:"" },
-  { id:7,  title:"Codigo Limpio",            author:"Robert C. Martin",         category:"Programacion", year:2008, description:"Buenas practicas para crear programas claros, ordenados y faciles de mantener.", color:"#1f8a70", available:1, favorite:0, featured:0, link:"" },
-  { id:8,  title:"Breve Historia del Tiempo",author:"Stephen Hawking",          category:"Ciencia",      year:1988, description:"Un recorrido accesible por el universo, los agujeros negros y el tiempo.", color:"#b7791f", available:1, favorite:0, featured:0, link:"" },
-  { id:9,  title:"El Diario de Ana Frank",   author:"Ana Frank",                category:"Historia",     year:1947, description:"Testimonio personal de una joven durante la Segunda Guerra Mundial.", color:"#d75a4a", available:1, favorite:0, featured:0, link:"" },
-  { id:10, title:"Don Quijote de la Mancha", author:"Miguel de Cervantes",      category:"Literatura",   year:1605, description:"Las aventuras del caballero andante mas famoso de la literatura en espanol.", color:"#2d6cdf", available:1, favorite:0, featured:0, link:"" }
-];
-
-function loadBooks() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  books = saved ? JSON.parse(saved) : LIBROS_DEFAULT;
-  if (!saved) localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
-}
-function saveBooks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+async function apiFetch(path, options = {}) {
+  const res  = await fetch(API + path, options);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Error de API");
+  return json;
 }
 
-// ── Reseñas ───────────────────────────────────────────────────────────────────
-function getReviews()           { return JSON.parse(localStorage.getItem(REVIEWS_KEY) || "[]"); }
-function saveReviews(r)         { localStorage.setItem(REVIEWS_KEY, JSON.stringify(r)); }
-function getBookReviews(bookId) { return getReviews().filter(r => String(r.bookId) === String(bookId)); }
+// ── Cargar libros ─────────────────────────────────────────────────────────────
+async function loadBooks() {
+  const params = new URLSearchParams();
+  if (searchInput?.value)                                        params.set("search",    searchInput.value);
+  if (categoryFilter?.value && categoryFilter.value !== "Todas") params.set("categoria", categoryFilter.value);
+  if (sortFilter?.value)                                         params.set("sort",      sortFilter.value);
+  const res = await apiFetch("/libros?" + params.toString());
+  books = res.data;
+}
+
+// ── Cargar categorias ─────────────────────────────────────────────────────────
+async function loadCategorias() {
+  try {
+    const res = await apiFetch("/categorias");
+    if (!categoryFilter) return;
+    const prev = categoryFilter.value;
+    categoryFilter.innerHTML = `<option value="Todas">Todas</option>`;
+    res.data.forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat; opt.textContent = cat;
+      categoryFilter.appendChild(opt);
+    });
+    if ([...categoryFilter.options].some(o => o.value === prev)) categoryFilter.value = prev;
+  } catch { /* mantener opciones del HTML */ }
+}
+
+// ── Reseñas (localStorage) ────────────────────────────────────────────────────
+function getReviews()             { return JSON.parse(localStorage.getItem(REVIEWS_KEY) || "[]"); }
+function saveReviews(r)           { localStorage.setItem(REVIEWS_KEY, JSON.stringify(r)); }
+function getBookReviews(bookId)   { return getReviews().filter(r => String(r.bookId) === String(bookId)); }
 function getBookAvgRating(bookId) {
   const revs = getBookReviews(bookId);
   if (!revs.length) return 0;
@@ -72,15 +81,16 @@ function getBookAvgRating(bookId) {
 }
 
 // ── Historial ─────────────────────────────────────────────────────────────────
-function addToHistory(bookId) {
+async function addToHistory(bookId) {
   const session = getSession();
-  if (!session) return;
-  const key     = "vl-history-" + session.email;
-  const history = JSON.parse(localStorage.getItem(key) || "[]");
-  const book    = books.find(b => String(b.id) === String(bookId));
-  if (!book) return;
-  history.unshift({ bookId, title: book.title, author: book.author, color: book.color, cover: book.cover || "", date: Date.now() });
-  localStorage.setItem(key, JSON.stringify(history.slice(0, 50)));
+  if (!session?.email) return;
+  try {
+    await apiFetch("/historial", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ user_email: session.email, libro_id: bookId })
+    });
+  } catch { /* sin conexion */ }
 }
 
 // ── Limite diario ─────────────────────────────────────────────────────────────
@@ -96,7 +106,7 @@ function incrementDailyReads() {
 function getUserPlan() {
   const session = getSession();
   if (!session) return { key: "free", dailyLimit: 5 };
-  if (session.plan !== "free" && session.planExpiry && Date.now() > new Date(session.planExpiry).getTime()) {
+  if (session.plan !== "free" && session.planExpiry && Date.now() > session.planExpiry) {
     session.plan = "free"; session.planExpiry = null;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }
@@ -112,27 +122,28 @@ function canReadMore() {
   return plan.dailyLimit === Infinity || getDailyReads() < plan.dailyLimit;
 }
 
-// ── Filtrado ──────────────────────────────────────────────────────────────────
+// ── Filtrado local ────────────────────────────────────────────────────────────
 function getFilteredBooks() {
   const search   = searchInput    ? normalizeText(searchInput.value) : "";
   const category = categoryFilter ? categoryFilter.value             : "Todas";
-  const sortBy   = sortFilter     ? sortFilter.value                 : "title";
+  const sortBy   = sortFilter     ? sortFilter.value                 : "titulo";
 
   return books
     .filter(book => {
       const matchSearch = !search ||
-        normalizeText(book.title).includes(search)  ||
-        normalizeText(book.author).includes(search) ||
-        normalizeText(book.category).includes(search);
+        normalizeText(book.titulo).includes(search)    ||
+        normalizeText(book.autor).includes(search)     ||
+        normalizeText(book.categoria || "").includes(search);
       return matchSearch &&
-        (category === "Todas" || book.category === category) &&
-        (!showFavoritesOnly || book.favorite);
+        (category === "Todas" || book.categoria === category) &&
+        (!showFavoritesOnly || book.favorito);
     })
     .sort((a, b) => {
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return  1;
-      if (sortBy === "year") return Number(b.year) - Number(a.year);
-      return normalizeText(a[sortBy] || "").localeCompare(normalizeText(b[sortBy] || ""));
+      if (a.destacado && !b.destacado) return -1;
+      if (!a.destacado && b.destacado) return  1;
+      if (sortBy === "anio") return Number(b.anio) - Number(a.anio);
+      const campo = sortBy === "title" ? "titulo" : sortBy === "author" ? "autor" : sortBy;
+      return normalizeText(a[campo] || "").localeCompare(normalizeText(b[campo] || ""));
     });
 }
 
@@ -148,37 +159,37 @@ function renderBooks() {
     card.className = "book-card";
     card.style.animationDelay = `${Math.min(index * 0.06, 0.5)}s`;
 
-    const avg      = getBookAvgRating(book.id);
-    const stars    = avg > 0 ? "★".repeat(avg) + "☆".repeat(5 - avg) : "☆☆☆☆☆";
-    const revCount = getBookReviews(book.id).length;
-    const featBadge = book.featured ? `<span class="featured-badge">Destacado</span>` : "";
+    const avg       = getBookAvgRating(book.id);
+    const stars     = avg > 0 ? "★".repeat(avg) + "☆".repeat(5 - avg) : "☆☆☆☆☆";
+    const revCount  = getBookReviews(book.id).length;
+    const featBadge = book.destacado ? `<span class="featured-badge">Destacado</span>` : "";
 
-    const coverStyle = book.cover
-      ? `background-image:url('${book.cover}');background-size:cover;background-position:center;`
+    const coverStyle = book.portada
+      ? `background-image:url('${book.portada}');background-size:cover;background-position:center;`
       : `--cover-color:${book.color || "#1f8a70"}`;
-    const coverImg = book.cover
-      ? `<img src="${book.cover}" alt="Portada" class="book-cover-img">`
-      : `<strong>${escapeHtml(book.title)}</strong>`;
+    const coverImg = book.portada
+      ? `<img src="${book.portada}" alt="Portada" class="book-cover-img">`
+      : `<strong>${escapeHtml(book.titulo)}</strong>`;
 
     card.innerHTML = `
-      <div class="book-cover ${book.cover ? "has-cover" : ""}" style="${coverStyle}">
+      <div class="book-cover ${book.portada ? "has-cover" : ""}" style="${coverStyle}">
         ${coverImg}${featBadge}
       </div>
       <div class="book-body">
         <div class="book-meta">
-          <span class="badge">${escapeHtml(book.category)}</span>
-          <span>${book.year || ""}</span>
+          <span class="badge">${escapeHtml(book.categoria || "Sin categoria")}</span>
+          <span>${book.anio || ""}</span>
         </div>
-        <h2 class="book-title">${escapeHtml(book.title)}</h2>
-        <p class="book-author">${escapeHtml(book.author)}</p>
-        <p class="book-description">${escapeHtml(book.description || "Sin descripcion.")}</p>
+        <h2 class="book-title">${escapeHtml(book.titulo)}</h2>
+        <p class="book-author">${escapeHtml(book.autor)}</p>
+        <p class="book-description">${escapeHtml(book.descripcion || "Sin descripcion.")}</p>
         <div class="book-rating" data-action="openReview" data-id="${book.id}" title="Ver resenas">
           <span class="stars-display">${stars}</span>
           <span class="rating-count">${revCount} resena${revCount !== 1 ? "s" : ""}</span>
         </div>
         <div class="card-actions">
           <button class="read-button"     type="button" data-action="read"     data-id="${book.id}">Leer</button>
-          <button class="favorite-button ${book.favorite ? "is-favorite" : ""}" type="button" data-action="favorite" data-id="${book.id}" aria-label="Favorito">${book.favorite ? "★" : "☆"}</button>
+          <button class="favorite-button ${book.favorito ? "is-favorite" : ""}" type="button" data-action="favorite" data-id="${book.id}" aria-label="Favorito">${book.favorito ? "★" : "☆"}</button>
         </div>
       </div>`;
     booksGrid.appendChild(card);
@@ -188,8 +199,8 @@ function renderBooks() {
 
 function updateStats() {
   if (totalBooksEl)     totalBooksEl.textContent     = books.length;
-  if (favoriteBooksEl)  favoriteBooksEl.textContent  = books.filter(b => b.favorite).length;
-  if (availableBooksEl) availableBooksEl.textContent = books.filter(b => b.available).length;
+  if (favoriteBooksEl)  favoriteBooksEl.textContent  = books.filter(b => b.favorito).length;
+  if (availableBooksEl) availableBooksEl.textContent = books.filter(b => b.disponible).length;
 }
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
@@ -202,9 +213,16 @@ function handleBookAction(e) {
   if (action === "openReview") openReviewDialog(id);
 }
 
-function toggleFavorite(bookId) {
-  const b = books.find(x => String(x.id) === String(bookId));
-  if (b) { b.favorite = b.favorite ? 0 : 1; saveBooks(); renderBooks(); }
+async function toggleFavorite(bookId) {
+  try {
+    const res = await apiFetch(`/libros/${bookId}/favorito`, { method: "PATCH" });
+    const b   = books.find(x => String(x.id) === String(bookId));
+    if (b) b.favorito = res.data.favorito;
+  } catch {
+    const b = books.find(x => String(x.id) === String(bookId));
+    if (b) b.favorito = b.favorito ? 0 : 1;
+  }
+  renderBooks();
 }
 
 function readBook(bookId) {
@@ -213,7 +231,7 @@ function readBook(bookId) {
   if (!canReadMore()) { showLimitDialog(); return; }
   incrementDailyReads();
   addToHistory(bookId);
-  if (book.link && book.link.trim()) openPdfViewer(book);
+  if (book.enlace && book.enlace.trim()) openPdfViewer(book);
   else openBookDialog(bookId);
 }
 
@@ -230,7 +248,7 @@ function toDriveEmbed(url) {
 
 function openPdfViewer(book) {
   document.getElementById("pdfViewerDialog")?.remove();
-  const embedUrl = toDriveEmbed(book.link);
+  const embedUrl = toDriveEmbed(book.enlace);
   const viewer   = document.createElement("div");
   viewer.id        = "pdfViewerDialog";
   viewer.className = "pdf-viewer-overlay";
@@ -238,13 +256,13 @@ function openPdfViewer(book) {
     <div class="pdf-viewer-box" id="pdfViewerBox">
       <div class="pdf-viewer-header">
         <div>
-          <span class="eyebrow">${escapeHtml(book.category)}</span>
-          <h2 style="margin:2px 0 0;font-size:16px;">${escapeHtml(book.title)}</h2>
-          <p style="margin:0;color:var(--muted);font-size:13px;">${escapeHtml(book.author)}</p>
+          <span class="eyebrow">${escapeHtml(book.categoria || "")}</span>
+          <h2 style="margin:2px 0 0;font-size:16px;">${escapeHtml(book.titulo)}</h2>
+          <p style="margin:0;color:var(--muted);font-size:13px;">${escapeHtml(book.autor)}</p>
         </div>
         <div class="pdf-viewer-actions">
           <button class="pdf-expand-btn" id="pdfAgrandarBtn" type="button">Agrandar</button>
-          <button class="close-button" id="closePdfViewer" type="button">&#x2715;</button>
+          <button class="close-button"   id="closePdfViewer" type="button">&#x2715;</button>
         </div>
       </div>
       <iframe id="pdfFrame" class="pdf-frame" src="${escapeHtml(embedUrl)}" allowfullscreen allow="autoplay"></iframe>
@@ -273,18 +291,18 @@ function openBookDialog(bookId) {
   if (!book || !dialog) return;
   const cover = document.querySelector("#dialogCover");
   cover.style.setProperty("--cover-color", book.color || "#1f8a70");
-  cover.style.backgroundImage = book.cover ? `url('${book.cover}')` : "";
-  cover.classList.toggle("has-cover", !!book.cover);
-  document.querySelector("#dialogCategory").textContent    = book.category;
-  document.querySelector("#dialogTitle").textContent       = book.title;
-  document.querySelector("#dialogAuthor").textContent      = book.author;
-  document.querySelector("#dialogDescription").textContent = book.description || "Sin descripcion.";
-  document.querySelector("#dialogYear").textContent        = `Año: ${book.year || "Sin dato"}`;
-  document.querySelector("#dialogStatus").textContent      = book.available ? "Disponible" : "No disponible";
+  cover.style.backgroundImage = book.portada ? `url('${book.portada}')` : "";
+  cover.classList.toggle("has-cover", !!book.portada);
+  document.querySelector("#dialogCategory").textContent    = book.categoria || "";
+  document.querySelector("#dialogTitle").textContent       = book.titulo;
+  document.querySelector("#dialogAuthor").textContent      = book.autor;
+  document.querySelector("#dialogDescription").textContent = book.descripcion || "Sin descripcion.";
+  document.querySelector("#dialogYear").textContent        = `Año: ${book.anio || "Sin dato"}`;
+  document.querySelector("#dialogStatus").textContent      = book.disponible ? "Disponible" : "No disponible";
   const readLink = document.querySelector("#dialogReadLink");
   if (readLink) {
-    if (book.link) { readLink.href = book.link; readLink.classList.remove("hidden"); }
-    else           { readLink.classList.add("hidden"); }
+    if (book.enlace) { readLink.href = book.enlace; readLink.classList.remove("hidden"); }
+    else             { readLink.classList.add("hidden"); }
   }
   dialog.showModal();
 }
@@ -313,7 +331,7 @@ function showLimitDialog() {
 
 // ── Reseñas ───────────────────────────────────────────────────────────────────
 function openReviewDialog(bookId) {
-  const book    = books.find(b => String(b.id) === String(bookId));
+  const book     = books.find(b => String(b.id) === String(bookId));
   if (!book) return;
   const session  = getSession();
   const reviews  = getBookReviews(bookId);
@@ -335,8 +353,8 @@ function openReviewDialog(bookId) {
     document.body.appendChild(rd);
     document.getElementById("closeReviewDialog").addEventListener("click", () => rd.close());
   }
-  document.getElementById("reviewBookTitle").textContent  = book.title;
-  document.getElementById("reviewBookAuthor").textContent = book.author;
+  document.getElementById("reviewBookTitle").textContent  = book.titulo;
+  document.getElementById("reviewBookAuthor").textContent = book.autor;
   renderReviewForm(bookId, session, myReview);
   renderReviewsList(bookId);
   rd.showModal();
@@ -392,7 +410,7 @@ function renderReviewsList(bookId) {
       </div>`).join("");
 }
 
-// ── Vista todos / favoritos ───────────────────────────────────────────────────
+// ── Vista favoritos ───────────────────────────────────────────────────────────
 function setView(favoritesOnly) {
   showFavoritesOnly = favoritesOnly;
   viewAllButton      ?.classList.toggle("active", !favoritesOnly);
@@ -418,14 +436,22 @@ applyTheme(localStorage.getItem("vl-theme") === "dark");
 if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
 
 // ── Listeners ─────────────────────────────────────────────────────────────────
-if (searchInput)         searchInput.addEventListener("input",   renderBooks);
+if (searchInput)         searchInput.addEventListener("input",    renderBooks);
 if (categoryFilter)      categoryFilter.addEventListener("change", renderBooks);
-if (sortFilter)          sortFilter.addEventListener("change",   renderBooks);
-if (booksGrid)           booksGrid.addEventListener("click",     handleBookAction);
-if (viewAllButton)       viewAllButton.addEventListener("click",       () => setView(false));
-if (viewFavoritesButton) viewFavoritesButton.addEventListener("click", () => setView(true));
-if (closeDialogButton)   closeDialogButton.addEventListener("click",   () => dialog?.close());
+if (sortFilter)          sortFilter.addEventListener("change",    renderBooks);
+if (booksGrid)           booksGrid.addEventListener("click",      handleBookAction);
+if (viewAllButton)       viewAllButton.addEventListener("click",        () => setView(false));
+if (viewFavoritesButton) viewFavoritesButton.addEventListener("click",  () => setView(true));
+if (closeDialogButton)   closeDialogButton.addEventListener("click",    () => dialog?.close());
 
 // ── Arranque ──────────────────────────────────────────────────────────────────
-loadBooks();
-renderBooks();
+loadCategorias().then(() => {
+  loadBooks()
+    .then(() => renderBooks())
+    .catch(() => {
+      if (emptyState) {
+        emptyState.classList.add("show");
+        emptyState.textContent = "No se pudo conectar al servidor. Verifica que el servidor este corriendo.";
+      }
+    });
+});

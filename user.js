@@ -1,44 +1,27 @@
-// user.js — Login y Registro con localStorage (sin backend)
+// user.js — Login y Registro conectado al backend SQLite
 "use strict";
 
+const API         = "http://localhost:3000/api";
 const SESSION_KEY = "vl-user-session";
-const USERS_KEY   = "vl-users";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getUsers() {
-  const u = localStorage.getItem(USERS_KEY);
-  if (u) return JSON.parse(u);
-  // Usuarios de prueba por defecto
-  const defaults = [
-    { name: "Estudiante Demo",   email: "demo@gmail.com",    password: "123456", plan: "free",    planExpiry: null },
-    { name: "Usuario Plata",     email: "plata@gmail.com",   password: "123456", plan: "silver",  planExpiry: null },
-    { name: "Usuario Diamante",  email: "diamante@gmail.com",password: "123456", plan: "diamond", planExpiry: null }
-  ];
-  localStorage.setItem(USERS_KEY, JSON.stringify(defaults));
-  return defaults;
-}
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
 function setSession(user) {
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-    name:       user.name,
+    id:         user.id,
+    name:       user.nombre,
     email:      user.email,
     plan:       user.plan       || "free",
     planExpiry: user.planExpiry || null
   }));
 }
 
-// ── Navegacion entre pantallas ────────────────────────────────────────────────
+// ── Navegacion ────────────────────────────────────────────────────────────────
 const screens = ["screenLogin", "screenRegister", "screenForgot"];
 function showScreen(id) {
   screens.forEach(s => {
     const el = document.getElementById(s);
     if (el) el.classList.toggle("hidden", s !== id);
   });
-  document.querySelectorAll(".auth-error, .auth-success, .forgot-confirm").forEach(el => {
-    el.classList.add("hidden");
-  });
+  document.querySelectorAll(".auth-error, .auth-success, .forgot-confirm").forEach(el => el.classList.add("hidden"));
 }
 
 // ── Toggle contrasena ─────────────────────────────────────────────────────────
@@ -52,71 +35,90 @@ document.querySelectorAll(".toggle-pass").forEach(btn => {
   });
 });
 
-// ── Validaciones ──────────────────────────────────────────────────────────────
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove("hidden");
-}
-function hideError(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add("hidden");
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()); }
+function showError(id, msg)  { const el = document.getElementById(id); if (!el) return; el.textContent = msg; el.classList.remove("hidden"); }
+function hideError(id)       { const el = document.getElementById(id); if (el) el.classList.add("hidden"); }
+function setLoading(btnId, loading, label) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled    = loading;
+  btn.textContent = loading ? "Cargando..." : (label || btn.dataset.label || btn.textContent);
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 const loginForm = document.getElementById("loginForm");
 if (loginForm) {
-  loginForm.addEventListener("submit", function (e) {
+  const btn = loginForm.querySelector("button[type=submit]");
+  if (btn) btn.dataset.label = btn.textContent;
+
+  loginForm.addEventListener("submit", async function (e) {
     e.preventDefault();
     hideError("loginError");
 
     const email    = document.getElementById("loginEmail").value.trim().toLowerCase();
     const password = document.getElementById("loginPassword").value;
 
-    if (!isValidEmail(email)) { showError("loginError", "Escribe un correo valido."); return; }
-    if (!password)             { showError("loginError", "Escribe tu contrasena."); return; }
-    if (!email.endsWith("@gmail.com")) { showError("loginError", "Solo se aceptan correos @gmail.com."); return; }
+    if (!isValidEmail(email))              { showError("loginError", "Escribe un correo valido."); return; }
+    if (!email.endsWith("@gmail.com"))     { showError("loginError", "Solo se aceptan correos @gmail.com."); return; }
+    if (!password)                         { showError("loginError", "Escribe tu contrasena."); return; }
 
-    const users = getUsers();
-    const user  = users.find(u => u.email === email && u.password === password);
-    if (!user) { showError("loginError", "Correo o contrasena incorrectos."); return; }
-
-    setSession(user);
-    window.location.href = "index.html";
+    setLoading("loginSubmitBtn", true);
+    try {
+      const res  = await fetch(API + "/usuarios/login", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ email, password })
+      });
+      const json = await res.json();
+      if (!json.ok) { showError("loginError", json.error); return; }
+      setSession(json.data);
+      window.location.href = "index.html";
+    } catch {
+      showError("loginError", "No se pudo conectar al servidor. Verifica que el servidor este corriendo.");
+    } finally {
+      setLoading("loginSubmitBtn", false, "Iniciar sesion");
+    }
   });
 }
 
 // ── REGISTRO ──────────────────────────────────────────────────────────────────
 const registerForm = document.getElementById("registerForm");
 if (registerForm) {
-  registerForm.addEventListener("submit", function (e) {
+  const btn = registerForm.querySelector("button[type=submit]");
+  if (btn) btn.dataset.label = btn.textContent;
+
+  registerForm.addEventListener("submit", async function (e) {
     e.preventDefault();
     hideError("registerError");
     const successEl = document.getElementById("registerSuccess");
     if (successEl) successEl.classList.add("hidden");
 
-    const name     = document.getElementById("regName").value.trim();
+    const nombre   = document.getElementById("regName").value.trim();
     const email    = document.getElementById("regEmail").value.trim().toLowerCase();
     const password = document.getElementById("regPassword").value;
 
-    if (!name)                         { showError("registerError", "Escribe tu nombre completo."); return; }
+    if (!nombre)                       { showError("registerError", "Escribe tu nombre completo."); return; }
     if (!email.endsWith("@gmail.com")) { showError("registerError", "Solo se aceptan correos @gmail.com."); return; }
     if (!password)                     { showError("registerError", "Escribe una contrasena."); return; }
 
-    const users  = getUsers();
-    const exists = users.find(u => u.email === email);
-    if (exists) { showError("registerError", "Ese correo ya esta registrado."); return; }
-
-    users.push({ name, email, password, plan: "free", planExpiry: null });
-    saveUsers(users);
-
-    if (successEl) successEl.classList.remove("hidden");
-    registerForm.reset();
-    setTimeout(() => showScreen("screenLogin"), 2000);
+    setLoading("registerSubmitBtn", true);
+    try {
+      const res  = await fetch(API + "/usuarios/registro", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ nombre, email, password })
+      });
+      const json = await res.json();
+      if (!json.ok) { showError("registerError", json.error); return; }
+      if (successEl) successEl.classList.remove("hidden");
+      registerForm.reset();
+      setTimeout(() => showScreen("screenLogin"), 2000);
+    } catch {
+      showError("registerError", "No se pudo conectar al servidor.");
+    } finally {
+      setLoading("registerSubmitBtn", false, "Registrarse");
+    }
   });
 }
 
@@ -128,23 +130,20 @@ if (forgotForm) {
     hideError("forgotError");
     const confirmEl = document.getElementById("forgotConfirm");
     if (confirmEl) confirmEl.classList.add("hidden");
-
     const email = document.getElementById("forgotEmail").value.trim().toLowerCase();
     if (!isValidEmail(email)) { showError("forgotError", "Escribe un correo valido."); return; }
-
     const shownEl = document.getElementById("forgotEmailShown");
     if (shownEl) shownEl.textContent = email;
     if (confirmEl) confirmEl.classList.remove("hidden");
-    const submitBtn = document.getElementById("forgotSubmitBtn");
-    if (submitBtn) submitBtn.classList.add("hidden");
+    document.getElementById("forgotSubmitBtn")?.classList.add("hidden");
   });
 }
 
-// ── Navegacion ────────────────────────────────────────────────────────────────
-document.getElementById("goRegister")         ?.addEventListener("click", () => showScreen("screenRegister"));
-document.getElementById("goForgot")           ?.addEventListener("click", () => showScreen("screenForgot"));
-document.getElementById("goLoginFromRegister")?.addEventListener("click", () => showScreen("screenLogin"));
-document.getElementById("goLoginFromForgot")  ?.addEventListener("click", () => {
+// ── Navegacion de pantallas ───────────────────────────────────────────────────
+document.getElementById("goRegister")          ?.addEventListener("click", () => showScreen("screenRegister"));
+document.getElementById("goForgot")            ?.addEventListener("click", () => showScreen("screenForgot"));
+document.getElementById("goLoginFromRegister") ?.addEventListener("click", () => showScreen("screenLogin"));
+document.getElementById("goLoginFromForgot")   ?.addEventListener("click", () => {
   document.getElementById("forgotSubmitBtn")?.classList.remove("hidden");
   showScreen("screenLogin");
 });
