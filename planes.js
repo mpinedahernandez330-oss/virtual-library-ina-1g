@@ -1,7 +1,7 @@
-// planes.js — Planes conectados a la API SQLite
+// planes.js — Planes conectado a la API REST
 "use strict";
 
-const API         = "http://localhost:3000/api";
+const API         = "http://localhost:3000";
 const SESSION_KEY = "vl-user-session";
 
 const PLANES = {
@@ -24,7 +24,7 @@ function updateUI() {
   const session = getSession();
   if (!session) return;
   let planKey = session.plan || "free";
-  if (planKey !== "free" && session.planExpiry && Date.now() > session.planExpiry) planKey = "free";
+  if (planKey !== "free" && session.planExpiry && Date.now() > new Date(session.planExpiry).getTime()) planKey = "free";
 
   const banner = document.getElementById("planActualBanner");
   if (banner && planKey !== "free" && session.planExpiry) {
@@ -62,23 +62,25 @@ function openPayDialog(planKey) {
 }
 
 async function confirmPay() {
+  if (!pendingPlan) return;
   const session = getSession();
-  if (!session?.id || !pendingPlan) return;
+  if (!session?.id) { alert("Sesion no valida. Por favor inicia sesion de nuevo."); return; }
 
-  const confirmBtn = document.getElementById("payConfirm");
-  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "Procesando..."; }
+  const btn = document.getElementById("payConfirm");
+  if (btn) { btn.disabled = true; btn.textContent = "Procesando..."; }
 
   try {
-    const res  = await fetch(API + "/usuarios/" + session.id + "/plan", {
+    const res  = await fetch(`${API}/api/usuarios/${session.id}/plan`, {
       method:  "PUT",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ plan: pendingPlan })
     });
     const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
+    if (!json.ok) { alert(json.error || "Error al activar el plan."); return; }
 
+    // Calcular expiry local para mostrar en UI (mismo calculo que el server)
     const plan   = PLANES[pendingPlan];
-    const expiry = plan.days ? Date.now() + plan.days * 86400000 : null;
+    const expiry = plan.days ? new Date(Date.now() + plan.days * 86400000).toISOString() : null;
     updateSession({ plan: pendingPlan, planExpiry: expiry });
 
     payDialog.close();
@@ -87,11 +89,11 @@ async function confirmPay() {
       `${plan.icon} Plan ${plan.name} activado${expDate ? " hasta el " + expDate : ""}. Disfruta tu lectura!`;
     successDialog.showModal();
     updateUI();
-  } catch (err) {
-    alert("No se pudo actualizar el plan: " + (err.message || "Error de conexion."));
-  } finally {
-    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Confirmar pago"; }
     pendingPlan = null;
+  } catch {
+    alert("No se pudo conectar con el servidor. Verifica que el backend este activo.");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Confirmar"; }
   }
 }
 

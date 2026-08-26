@@ -1,7 +1,7 @@
-// perfil.js — Perfil del usuario conectado a la API SQLite
+// perfil.js — Perfil conectado a la API REST
 "use strict";
 
-const API         = "http://localhost:3000/api";
+const API         = "http://localhost:3000";
 const SESSION_KEY = "vl-user-session";
 
 function getSession() {
@@ -22,10 +22,10 @@ async function renderPerfil() {
   // Avatar
   const initials = session.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
   const avatarEl = document.getElementById("perfilAvatar");
-  const saved    = localStorage.getItem(getAvatarKey(session.email));
+  const savedAvatar = localStorage.getItem(getAvatarKey(session.email));
   if (avatarEl) {
-    if (saved) {
-      avatarEl.style.backgroundImage    = `url('${saved}')`;
+    if (savedAvatar) {
+      avatarEl.style.backgroundImage    = `url('${savedAvatar}')`;
       avatarEl.style.backgroundSize     = "cover";
       avatarEl.style.backgroundPosition = "center";
       avatarEl.style.color              = "transparent";
@@ -41,23 +41,40 @@ async function renderPerfil() {
   const planExpiry = session.planExpiry ? new Date(session.planExpiry).getTime() : null;
   const expired    = planExpiry && Date.now() > planExpiry;
   const planKey    = (expired || !session.plan) ? "free" : session.plan;
-  const badges     = { free: { label: "Gratis", cls: "plan-badge-free" }, silver: { label: "Plata", cls: "plan-badge-silver" }, diamond: { label: "Diamante", cls: "plan-badge-diamond" } };
-  const badge      = document.getElementById("perfilPlanBadge");
-  const badgeInfo  = badges[planKey] || badges.free;
+  const badges     = {
+    free:    { label: "Gratis",   cls: "plan-badge-free"    },
+    silver:  { label: "Plata",    cls: "plan-badge-silver"  },
+    diamond: { label: "Diamante", cls: "plan-badge-diamond" }
+  };
+  const badge     = document.getElementById("perfilPlanBadge");
+  const badgeInfo = badges[planKey] || badges.free;
   if (badge) { badge.textContent = badgeInfo.label; badge.classList.add(badgeInfo.cls); }
 
-  // Historial desde la API
-  let historial = [];
-  try {
-    const res = await fetch(API + "/historial/" + encodeURIComponent(session.email));
-    const json = await res.json();
-    if (json.ok) historial = json.data;
-  } catch { /* sin conexion */ }
-
-  document.getElementById("statLeidos").textContent = historial.length;
   renderPlanCard(session, planKey, expired, planExpiry);
-  renderHistorial(historial);
   setupAvatarUpload(session.email);
+
+  // Historial desde la API
+  await loadHistorial(session.email);
+}
+
+async function loadHistorial(email) {
+  try {
+    const res  = await fetch(`${API}/api/historial/${encodeURIComponent(email)}`);
+    const json = await res.json();
+    const historial = json.ok ? json.data : [];
+
+    const statEl = document.getElementById("statLeidos");
+    if (statEl) statEl.textContent = historial.length;
+
+    renderHistorial(historial);
+  } catch {
+    const statEl = document.getElementById("statLeidos");
+    if (statEl) statEl.textContent = "—";
+    const list  = document.getElementById("historialList");
+    const empty = document.getElementById("historialEmpty");
+    if (list)  list.innerHTML = "";
+    if (empty) { empty.textContent = "Error al cargar el historial."; empty.classList.add("show"); }
+  }
 }
 
 function renderPlanCard(session, planKey, expired, planExpiry) {
@@ -98,13 +115,15 @@ function renderHistorial(historial) {
     const fecha = new Date(entry.leido_en).toLocaleDateString("es-ES");
     const row   = document.createElement("div");
     row.className = "historial-row";
+
+    const portadaUrl = entry.portada ? `${API}${entry.portada}` : "";
     row.innerHTML = `
       <div class="historial-cover" style="${
-        entry.portada
-          ? `background-image:url('${entry.portada}');background-size:cover;background-position:center;`
+        portadaUrl
+          ? `background-image:url('${portadaUrl}');background-size:cover;background-position:center;`
           : `background:${entry.color || "#1f8a70"}`
       }">
-        ${entry.portada ? "" : `<span>${(entry.titulo || "?")[0]}</span>`}
+        ${portadaUrl ? "" : `<span>${(entry.titulo || "?")[0]}</span>`}
       </div>
       <div class="historial-info">
         <strong>${escapeHtml(entry.titulo || "")}</strong>
@@ -116,8 +135,8 @@ function renderHistorial(historial) {
 }
 
 function setupAvatarUpload(email) {
-  const wrap  = document.getElementById("perfilAvatarWrap");
-  const input = document.getElementById("avatarFileInput");
+  const wrap     = document.getElementById("perfilAvatarWrap");
+  const input    = document.getElementById("avatarFileInput");
   const avatarEl = document.getElementById("perfilAvatar");
   if (!wrap || !input || !avatarEl) return;
   wrap.addEventListener("click", () => input.click());

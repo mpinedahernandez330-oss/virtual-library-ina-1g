@@ -1,0 +1,17 @@
+# Dependencias
+node_modules/
+backend/node_modules/
+
+# Variables de entorno (contiene contraseñas)
+.env
+backend/.env
+
+# Base de datos local
+backend/data/
+
+# Archivos subidos por usuarios
+backend/uploads/
+
+# Logs
+*.log
+npm-debug.log*

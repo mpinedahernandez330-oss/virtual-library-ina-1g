@@ -1,10 +1,8 @@
-// script.js — Catalogo Virtual Library (SQLite via API)
+// script.js — Catalogo Virtual Library (API REST)
 "use strict";
 
-const API         = "http://localhost:3000/api";
+const API         = "http://localhost:3000";
 const SESSION_KEY = "vl-user-session";
-const REVIEWS_KEY = "vl-reviews";
-const DAILY_KEY   = "vl-daily-reads";
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 let books             = [];
@@ -37,63 +35,63 @@ function getSession() {
   const s = sessionStorage.getItem(SESSION_KEY);
   return s ? JSON.parse(s) : null;
 }
-async function apiFetch(path, options = {}) {
-  const res  = await fetch(API + path, options);
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "Error de API");
-  return json;
-}
 
-// ── Cargar libros ─────────────────────────────────────────────────────────────
+// ── Libros desde API ──────────────────────────────────────────────────────────
 async function loadBooks() {
-  const params = new URLSearchParams();
-  if (searchInput?.value)                                        params.set("search",    searchInput.value);
-  if (categoryFilter?.value && categoryFilter.value !== "Todas") params.set("categoria", categoryFilter.value);
-  if (sortFilter?.value)                                         params.set("sort",      sortFilter.value);
-  const res = await apiFetch("/libros?" + params.toString());
-  books = res.data;
-}
-
-// ── Cargar categorias ─────────────────────────────────────────────────────────
-async function loadCategorias() {
   try {
-    const res = await apiFetch("/categorias");
-    if (!categoryFilter) return;
-    const prev = categoryFilter.value;
-    categoryFilter.innerHTML = `<option value="Todas">Todas</option>`;
-    res.data.forEach(cat => {
-      const opt = document.createElement("option");
-      opt.value = cat; opt.textContent = cat;
-      categoryFilter.appendChild(opt);
-    });
-    if ([...categoryFilter.options].some(o => o.value === prev)) categoryFilter.value = prev;
-  } catch { /* mantener opciones del HTML */ }
+    const search   = searchInput    ? normalizeText(searchInput.value)  : "";
+    const category = categoryFilter ? categoryFilter.value              : "Todas";
+    const sortBy   = sortFilter     ? sortFilter.value                  : "titulo";
+
+    const params = new URLSearchParams();
+    if (search)                     params.set("search",    search);
+    if (category && category !== "Todas") params.set("categoria", category);
+    if (sortBy)                     params.set("sort",      sortBy);
+
+    const res  = await fetch(`${API}/api/libros?${params}`);
+    const json = await res.json();
+    books = json.ok ? json.data : [];
+
+    // Filtrar favoritos localmente si es necesario (favorito es por usuario)
+    let filtered = books;
+    if (showFavoritesOnly) filtered = books.filter(b => b.favorito);
+
+    renderBooks(filtered);
+  } catch {
+    if (booksGrid) booksGrid.innerHTML = `<p style="color:var(--muted);padding:24px;">Error al conectar con el servidor. Asegurate de que el backend este activo.</p>`;
+  }
 }
 
-// ── Reseñas (localStorage) ────────────────────────────────────────────────────
-function getReviews()             { return JSON.parse(localStorage.getItem(REVIEWS_KEY) || "[]"); }
-function saveReviews(r)           { localStorage.setItem(REVIEWS_KEY, JSON.stringify(r)); }
-function getBookReviews(bookId)   { return getReviews().filter(r => String(r.bookId) === String(bookId)); }
-function getBookAvgRating(bookId) {
-  const revs = getBookReviews(bookId);
+// ── Reseñas desde API ─────────────────────────────────────────────────────────
+async function getBookReviews(bookId) {
+  try {
+    const res  = await fetch(`${API}/api/resenas?libroId=${bookId}`);
+    const json = await res.json();
+    return json.ok ? json.data : [];
+  } catch { return []; }
+}
+
+async function getBookAvgRating(bookId) {
+  const revs = await getBookReviews(bookId);
   if (!revs.length) return 0;
-  return Math.round(revs.reduce((s, r) => s + r.rating, 0) / revs.length);
+  return Math.round(revs.reduce((s, r) => s + r.calificacion, 0) / revs.length);
 }
 
-// ── Historial ─────────────────────────────────────────────────────────────────
+// ── Historial via API ─────────────────────────────────────────────────────────
 async function addToHistory(bookId) {
   const session = getSession();
-  if (!session?.email) return;
+  if (!session) return;
   try {
-    await apiFetch("/historial", {
+    await fetch(`${API}/api/historial`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ user_email: session.email, libro_id: bookId })
     });
-  } catch { /* sin conexion */ }
+  } catch { /* silencioso */ }
 }
 
-// ── Limite diario ─────────────────────────────────────────────────────────────
+// ── Limite diario (se mantiene local por performance) ────────────────────────
+const DAILY_KEY = "vl-daily-reads";
 function getDailyReads() {
   const today = new Date().toDateString();
   const saved = JSON.parse(localStorage.getItem(DAILY_KEY) || "{}");
@@ -106,7 +104,7 @@ function incrementDailyReads() {
 function getUserPlan() {
   const session = getSession();
   if (!session) return { key: "free", dailyLimit: 5 };
-  if (session.plan !== "free" && session.planExpiry && Date.now() > session.planExpiry) {
+  if (session.plan !== "free" && session.planExpiry && Date.now() > new Date(session.planExpiry).getTime()) {
     session.plan = "free"; session.planExpiry = null;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }
@@ -122,35 +120,9 @@ function canReadMore() {
   return plan.dailyLimit === Infinity || getDailyReads() < plan.dailyLimit;
 }
 
-// ── Filtrado local ────────────────────────────────────────────────────────────
-function getFilteredBooks() {
-  const search   = searchInput    ? normalizeText(searchInput.value) : "";
-  const category = categoryFilter ? categoryFilter.value             : "Todas";
-  const sortBy   = sortFilter     ? sortFilter.value                 : "titulo";
-
-  return books
-    .filter(book => {
-      const matchSearch = !search ||
-        normalizeText(book.titulo).includes(search)    ||
-        normalizeText(book.autor).includes(search)     ||
-        normalizeText(book.categoria || "").includes(search);
-      return matchSearch &&
-        (category === "Todas" || book.categoria === category) &&
-        (!showFavoritesOnly || book.favorito);
-    })
-    .sort((a, b) => {
-      if (a.destacado && !b.destacado) return -1;
-      if (!a.destacado && b.destacado) return  1;
-      if (sortBy === "anio") return Number(b.anio) - Number(a.anio);
-      const campo = sortBy === "title" ? "titulo" : sortBy === "author" ? "autor" : sortBy;
-      return normalizeText(a[campo] || "").localeCompare(normalizeText(b[campo] || ""));
-    });
-}
-
 // ── Render ────────────────────────────────────────────────────────────────────
-function renderBooks() {
+function renderBooks(filtered) {
   if (!booksGrid) return;
-  const filtered = getFilteredBooks();
   booksGrid.innerHTML = "";
   emptyState?.classList.toggle("show", filtered.length === 0);
 
@@ -159,16 +131,12 @@ function renderBooks() {
     card.className = "book-card";
     card.style.animationDelay = `${Math.min(index * 0.06, 0.5)}s`;
 
-    const avg       = getBookAvgRating(book.id);
-    const stars     = avg > 0 ? "★".repeat(avg) + "☆".repeat(5 - avg) : "☆☆☆☆☆";
-    const revCount  = getBookReviews(book.id).length;
     const featBadge = book.destacado ? `<span class="featured-badge">Destacado</span>` : "";
-
     const coverStyle = book.portada
-      ? `background-image:url('${book.portada}');background-size:cover;background-position:center;`
+      ? `background-image:url('${API}${book.portada}');background-size:cover;background-position:center;`
       : `--cover-color:${book.color || "#1f8a70"}`;
     const coverImg = book.portada
-      ? `<img src="${book.portada}" alt="Portada" class="book-cover-img">`
+      ? `<img src="${API}${book.portada}" alt="Portada" class="book-cover-img">`
       : `<strong>${escapeHtml(book.titulo)}</strong>`;
 
     card.innerHTML = `
@@ -184,8 +152,8 @@ function renderBooks() {
         <p class="book-author">${escapeHtml(book.autor)}</p>
         <p class="book-description">${escapeHtml(book.descripcion || "Sin descripcion.")}</p>
         <div class="book-rating" data-action="openReview" data-id="${book.id}" title="Ver resenas">
-          <span class="stars-display">${stars}</span>
-          <span class="rating-count">${revCount} resena${revCount !== 1 ? "s" : ""}</span>
+          <span class="stars-display" id="stars-${book.id}">☆☆☆☆☆</span>
+          <span class="rating-count"  id="rcount-${book.id}">0 resenas</span>
         </div>
         <div class="card-actions">
           <button class="read-button"     type="button" data-action="read"     data-id="${book.id}">Leer</button>
@@ -193,8 +161,20 @@ function renderBooks() {
         </div>
       </div>`;
     booksGrid.appendChild(card);
+
+    // Cargar calificaciones de forma asíncrona sin bloquear el render
+    loadBookRating(book.id);
   });
   updateStats();
+}
+
+async function loadBookRating(bookId) {
+  const revs = await getBookReviews(bookId);
+  const avg  = revs.length ? Math.round(revs.reduce((s, r) => s + r.calificacion, 0) / revs.length) : 0;
+  const starsEl  = document.getElementById(`stars-${bookId}`);
+  const rcountEl = document.getElementById(`rcount-${bookId}`);
+  if (starsEl)  starsEl.textContent  = avg > 0 ? "★".repeat(avg) + "☆".repeat(5 - avg) : "☆☆☆☆☆";
+  if (rcountEl) rcountEl.textContent = `${revs.length} resena${revs.length !== 1 ? "s" : ""}`;
 }
 
 function updateStats() {
@@ -209,20 +189,23 @@ function handleBookAction(e) {
   if (!btn) return;
   const { action, id } = btn.dataset;
   if (action === "read")       readBook(id);
-  if (action === "favorite")   toggleFavorite(id);
+  if (action === "favorite")   toggleFavorite(id, btn);
   if (action === "openReview") openReviewDialog(id);
 }
 
-async function toggleFavorite(bookId) {
+async function toggleFavorite(bookId, btn) {
   try {
-    const res = await apiFetch(`/libros/${bookId}/favorito`, { method: "PATCH" });
-    const b   = books.find(x => String(x.id) === String(bookId));
-    if (b) b.favorito = res.data.favorito;
-  } catch {
+    const res  = await fetch(`${API}/api/libros/${bookId}/favorito`, { method: "PATCH" });
+    const json = await res.json();
+    if (!json.ok) return;
     const b = books.find(x => String(x.id) === String(bookId));
-    if (b) b.favorito = b.favorito ? 0 : 1;
-  }
-  renderBooks();
+    if (b) b.favorito = json.data.favorito;
+    if (btn) {
+      btn.classList.toggle("is-favorite", !!json.data.favorito);
+      btn.textContent = json.data.favorito ? "★" : "☆";
+    }
+    updateStats();
+  } catch { /* silencioso */ }
 }
 
 function readBook(bookId) {
@@ -238,11 +221,11 @@ function readBook(bookId) {
 // ── Visor PDF ─────────────────────────────────────────────────────────────────
 function toDriveEmbed(url) {
   if (!url) return url;
-  if (url.startsWith("/uploads/")) return url;
-  const matchFile = url.match(/\/file\/d\/([^/]+)/);
-  if (matchFile) return `https://drive.google.com/file/d/${matchFile[1]}/preview`;
-  const matchOpen = url.match(/[?&]id=([^&]+)/);
-  if (matchOpen) return `https://drive.google.com/file/d/${matchOpen[1]}/preview`;
+  if (url.startsWith("/uploads/")) return `${API}${url}`;
+  const m1 = url.match(/\/file\/d\/([^/]+)/);
+  if (m1) return `https://drive.google.com/file/d/${m1[1]}/preview`;
+  const m2 = url.match(/[?&]id=([^&]+)/);
+  if (m2) return `https://drive.google.com/file/d/${m2[1]}/preview`;
   return url;
 }
 
@@ -250,8 +233,7 @@ function openPdfViewer(book) {
   document.getElementById("pdfViewerDialog")?.remove();
   const embedUrl = toDriveEmbed(book.enlace);
   const viewer   = document.createElement("div");
-  viewer.id        = "pdfViewerDialog";
-  viewer.className = "pdf-viewer-overlay";
+  viewer.id = "pdfViewerDialog"; viewer.className = "pdf-viewer-overlay";
   viewer.innerHTML = `
     <div class="pdf-viewer-box" id="pdfViewerBox">
       <div class="pdf-viewer-header">
@@ -291,7 +273,7 @@ function openBookDialog(bookId) {
   if (!book || !dialog) return;
   const cover = document.querySelector("#dialogCover");
   cover.style.setProperty("--cover-color", book.color || "#1f8a70");
-  cover.style.backgroundImage = book.portada ? `url('${book.portada}')` : "";
+  cover.style.backgroundImage = book.portada ? `url('${API}${book.portada}')` : "";
   cover.classList.toggle("has-cover", !!book.portada);
   document.querySelector("#dialogCategory").textContent    = book.categoria || "";
   document.querySelector("#dialogTitle").textContent       = book.titulo;
@@ -311,8 +293,7 @@ function showLimitDialog() {
   let d = document.getElementById("limitDialog");
   if (!d) {
     d = document.createElement("dialog");
-    d.id        = "limitDialog";
-    d.className = "pay-dialog";
+    d.id = "limitDialog"; d.className = "pay-dialog";
     d.innerHTML = `
       <div class="pay-dialog-content" style="text-align:center;">
         <div style="font-size:48px;margin-bottom:12px;">!</div>
@@ -330,18 +311,15 @@ function showLimitDialog() {
 }
 
 // ── Reseñas ───────────────────────────────────────────────────────────────────
-function openReviewDialog(bookId) {
-  const book     = books.find(b => String(b.id) === String(bookId));
+async function openReviewDialog(bookId) {
+  const book = books.find(b => String(b.id) === String(bookId));
   if (!book) return;
-  const session  = getSession();
-  const reviews  = getBookReviews(bookId);
-  const myReview = session ? reviews.find(r => r.email === session.email) : null;
+  const session = getSession();
 
   let rd = document.getElementById("reviewDialog");
   if (!rd) {
     rd = document.createElement("dialog");
-    rd.id        = "reviewDialog";
-    rd.className = "review-dialog";
+    rd.id = "reviewDialog"; rd.className = "review-dialog";
     rd.innerHTML = `
       <div class="review-dialog-inner">
         <button class="close-button" id="closeReviewDialog" type="button">&#x2715;</button>
@@ -355,23 +333,26 @@ function openReviewDialog(bookId) {
   }
   document.getElementById("reviewBookTitle").textContent  = book.titulo;
   document.getElementById("reviewBookAuthor").textContent = book.autor;
+
+  const reviews  = await getBookReviews(bookId);
+  const myReview = session ? reviews.find(r => r.user_email === session.email) : null;
   renderReviewForm(bookId, session, myReview);
-  renderReviewsList(bookId);
+  renderReviewsList(reviews);
   rd.showModal();
 }
 
 function renderReviewForm(bookId, session, myReview) {
   const sec = document.getElementById("reviewFormSection");
   if (!session) { sec.innerHTML = `<p class="review-login-msg">Inicia sesion para dejar una resena.</p>`; return; }
-  const current = myReview ? myReview.rating : 0;
+  const current = myReview ? myReview.calificacion : 0;
   sec.innerHTML = `
     <div class="review-form">
       <p class="review-form-label">${myReview ? "Tu resena:" : "Deja tu resena:"}</p>
       <div class="star-picker" id="starPicker">
         ${[1,2,3,4,5].map(n => `<button type="button" class="star-btn ${n <= current ? "active" : ""}" data-val="${n}">★</button>`).join("")}
       </div>
-      <textarea id="reviewTextInput" rows="3" placeholder="Escribe un comentario (opcional)..." maxlength="200">${escapeHtml(myReview?.text || "")}</textarea>
-      <button class="primary-button review-submit-btn" id="submitReviewBtn" type="button">${myReview ? "Actualizar resena" : "Publicar resena"}</button>
+      <textarea id="reviewTextInput" rows="3" placeholder="Escribe un comentario (opcional)..." maxlength="200">${escapeHtml(myReview?.texto || "")}</textarea>
+      <button class="primary-button" id="submitReviewBtn" type="button">${myReview ? "Actualizar resena" : "Publicar resena"}</button>
     </div>`;
 
   let selectedRating = current;
@@ -381,32 +362,41 @@ function renderReviewForm(bookId, session, myReview) {
     btn.addEventListener("click",      () => { selectedRating = Number(btn.dataset.val); document.querySelectorAll(".star-btn").forEach(b => b.classList.toggle("active", Number(b.dataset.val) <= selectedRating)); });
   });
 
-  document.getElementById("submitReviewBtn").addEventListener("click", () => {
+  document.getElementById("submitReviewBtn").addEventListener("click", async () => {
     if (!selectedRating) { alert("Selecciona al menos 1 estrella."); return; }
-    const txt     = document.getElementById("reviewTextInput").value.trim();
-    let reviews   = getReviews().filter(r => !(String(r.bookId) === String(bookId) && r.email === session.email));
-    const newReview = { bookId, email: session.email, name: session.name, rating: selectedRating, text: txt, date: Date.now() };
-    reviews.push(newReview);
-    saveReviews(reviews);
-    renderReviewForm(bookId, session, newReview);
-    renderReviewsList(bookId);
-    renderBooks();
+    const txt = document.getElementById("reviewTextInput").value.trim();
+    const submitBtn = document.getElementById("submitReviewBtn");
+    submitBtn.disabled = true; submitBtn.textContent = "Guardando...";
+    try {
+      const res  = await fetch(`${API}/api/resenas`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ libro_id: bookId, user_email: session.email, nombre: session.name, calificacion: selectedRating, texto: txt })
+      });
+      const json = await res.json();
+      if (!json.ok) { alert("Error al guardar la resena."); return; }
+      const reviews  = await getBookReviews(bookId);
+      const updated  = reviews.find(r => r.user_email === session.email);
+      renderReviewForm(bookId, session, updated || { calificacion: selectedRating, texto: txt });
+      renderReviewsList(reviews);
+      loadBookRating(bookId);
+    } catch { alert("Error de conexion al guardar la resena."); }
+    finally { submitBtn.disabled = false; }
   });
 }
 
-function renderReviewsList(bookId) {
-  const list    = document.getElementById("reviewsList");
-  const reviews = getBookReviews(bookId);
+function renderReviewsList(reviews) {
+  const list = document.getElementById("reviewsList");
   if (!reviews.length) { list.innerHTML = `<p class="empty-state show" style="margin-top:16px;">Se el primero en resenar este libro.</p>`; return; }
   list.innerHTML = `<h3 class="reviews-list-title">Resenas (${reviews.length})</h3>` +
-    reviews.sort((a, b) => b.date - a.date).map(r => `
+    [...reviews].sort((a, b) => b.fecha - a.fecha).map(r => `
       <div class="review-item">
         <div class="review-item-header">
-          <strong>${escapeHtml(r.name)}</strong>
-          <span class="review-stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span>
-          <span class="review-date">${new Date(r.date).toLocaleDateString("es-ES")}</span>
+          <strong>${escapeHtml(r.nombre)}</strong>
+          <span class="review-stars">${"★".repeat(r.calificacion)}${"☆".repeat(5 - r.calificacion)}</span>
+          <span class="review-date">${new Date(r.fecha).toLocaleDateString("es-ES")}</span>
         </div>
-        ${r.text ? `<p class="review-item-text">${escapeHtml(r.text)}</p>` : ""}
+        ${r.texto ? `<p class="review-item-text">${escapeHtml(r.texto)}</p>` : ""}
       </div>`).join("");
 }
 
@@ -415,7 +405,7 @@ function setView(favoritesOnly) {
   showFavoritesOnly = favoritesOnly;
   viewAllButton      ?.classList.toggle("active", !favoritesOnly);
   viewFavoritesButton?.classList.toggle("active",  favoritesOnly);
-  renderBooks();
+  loadBooks();
 }
 
 // ── Tema ──────────────────────────────────────────────────────────────────────
@@ -436,22 +426,13 @@ applyTheme(localStorage.getItem("vl-theme") === "dark");
 if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
 
 // ── Listeners ─────────────────────────────────────────────────────────────────
-if (searchInput)         searchInput.addEventListener("input",    renderBooks);
-if (categoryFilter)      categoryFilter.addEventListener("change", renderBooks);
-if (sortFilter)          sortFilter.addEventListener("change",    renderBooks);
+if (searchInput)         searchInput.addEventListener("input",    loadBooks);
+if (categoryFilter)      categoryFilter.addEventListener("change", loadBooks);
+if (sortFilter)          sortFilter.addEventListener("change",    loadBooks);
 if (booksGrid)           booksGrid.addEventListener("click",      handleBookAction);
-if (viewAllButton)       viewAllButton.addEventListener("click",        () => setView(false));
-if (viewFavoritesButton) viewFavoritesButton.addEventListener("click",  () => setView(true));
-if (closeDialogButton)   closeDialogButton.addEventListener("click",    () => dialog?.close());
+if (viewAllButton)       viewAllButton.addEventListener("click",       () => setView(false));
+if (viewFavoritesButton) viewFavoritesButton.addEventListener("click", () => setView(true));
+if (closeDialogButton)   closeDialogButton.addEventListener("click",   () => dialog?.close());
 
 // ── Arranque ──────────────────────────────────────────────────────────────────
-loadCategorias().then(() => {
-  loadBooks()
-    .then(() => renderBooks())
-    .catch(() => {
-      if (emptyState) {
-        emptyState.classList.add("show");
-        emptyState.textContent = "No se pudo conectar al servidor. Verifica que el servidor este corriendo.";
-      }
-    });
-});
+loadBooks();
