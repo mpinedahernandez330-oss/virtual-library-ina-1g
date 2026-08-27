@@ -124,11 +124,7 @@
             <label>
               CATEGORIA
               <select id="categoryInput" required>
-                <option value="Programacion">Programacion</option>
-                <option value="Literatura">Literatura</option>
-                <option value="Ciencia">Ciencia</option>
-                <option value="Historia">Historia</option>
-                <option value="Matematicas">Matematicas</option>
+                <option value="">-- Selecciona una categoria --</option>
               </select>
             </label>
             <label>
@@ -159,15 +155,24 @@
               <input type="file" id="coverInput" accept="image/*" style="display:none">
             </label>
 
-            <!-- Enlace para leer -->
+            <!-- PDF del libro -->
             <label>
-              ENLACE PARA LEER
-              <textarea
-                id="linkInput"
-                rows="5"
-                placeholder="https://drive.google.com/..."
-                style="resize:vertical;min-height:120px;"
-              ></textarea>
+              PDF DEL LIBRO
+              <div class="cover-upload-area" id="pdfUploadArea" style="min-height:120px;">
+                <div class="cover-upload-placeholder" id="pdfPlaceholder">
+                  <span class="cover-upload-icon">📄</span>
+                  <span>CLIC O ARRASTRA EL PDF</span>
+                  <span class="cover-upload-hint">Solo archivos PDF · máx 100 MB</span>
+                </div>
+                <div id="pdfSelectedInfo" style="display:none;flex-direction:column;align-items:center;gap:6px;padding:16px;">
+                  <span style="font-size:32px;">📄</span>
+                  <span id="pdfFileName" style="font-size:13px;font-weight:700;word-break:break-all;text-align:center;"></span>
+                  <button class="cover-remove-btn" id="pdfRemoveBtn" type="button" style="position:static;width:auto;height:auto;border-radius:6px;padding:4px 10px;font-size:12px;">✕ Quitar</button>
+                </div>
+              </div>
+              <input type="file" id="pdfInput" accept="application/pdf" style="display:none">
+              <!-- Campo oculto para enlace externo como fallback -->
+              <input type="text" id="linkInput" placeholder="O pega un enlace externo (Drive, etc.)" style="margin-top:8px;width:100%;">
             </label>
           </div>
 
@@ -218,7 +223,7 @@
           </select>
         </div>
 
-        <div class="books-grid" id="booksGrid" aria-live="polite"></div>
+        <div class="books-grid admin-books-grid" id="booksGrid" aria-live="polite"></div>
         <p class="empty-state" id="emptyState">No hay libros para mostrar.</p>
       </div>
     </div>
@@ -257,6 +262,20 @@
           <label>Categoria<select id="editCategory"></select></label>
           <label>Año<input type="number" id="editYear" min="1000" max="2099"></label>
         </div>
+
+        <!-- Portada -->
+        <label>Portada</label>
+        <div class="cover-upload-area" id="editCoverArea">
+          <div class="cover-upload-placeholder" id="editCoverPlaceholder">
+            <span class="cover-upload-icon">🖼️</span>
+            <span>Haz clic o arrastra una imagen</span>
+            <span class="cover-upload-hint">JPG, PNG · máx 2 MB</span>
+          </div>
+          <img class="cover-preview" id="editCoverPreview" style="display:none;" alt="Portada actual">
+          <button class="cover-remove-btn" id="editCoverRemove" type="button" style="display:none;">✕</button>
+        </div>
+        <input type="file" id="editCoverInput" accept="image/*" style="display:none;">
+
         <label>
           Enlace para leer
           <textarea id="editLink" rows="3" placeholder="https://drive.google.com/..." style="resize:vertical;"></textarea>

@@ -158,6 +158,11 @@ function rebuildCategorySelects() {
       o.value = "Todas"; o.textContent = "Todas";
       sel.appendChild(o);
     }
+    if (sel.id === "categoryInput") {
+      const o = document.createElement("option");
+      o.value = ""; o.textContent = "-- Selecciona una categoria --";
+      sel.appendChild(o);
+    }
     categories.forEach(cat => {
       const o = document.createElement("option");
       o.value = cat; o.textContent = cat;
@@ -252,6 +257,45 @@ coverRemoveBtn.addEventListener("click",     e => { e.stopPropagation(); clearCo
 coverUploadArea.addEventListener("dragover", e => { e.preventDefault(); coverUploadArea.classList.add("drag-over"); });
 coverUploadArea.addEventListener("dragleave",() => coverUploadArea.classList.remove("drag-over"));
 coverUploadArea.addEventListener("drop",     e => { e.preventDefault(); coverUploadArea.classList.remove("drag-over"); readImageFile(e.dataTransfer.files[0]); });
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+const pdfInput       = document.getElementById("pdfInput");
+const pdfUploadArea  = document.getElementById("pdfUploadArea");
+const pdfPlaceholder = document.getElementById("pdfPlaceholder");
+const pdfSelectedInfo= document.getElementById("pdfSelectedInfo");
+const pdfFileName    = document.getElementById("pdfFileName");
+const pdfRemoveBtn   = document.getElementById("pdfRemoveBtn");
+let currentPdfFile   = null;
+
+function showPdfSelected(file) {
+  currentPdfFile = file;
+  pdfFileName.textContent       = file.name;
+  pdfPlaceholder.style.display  = "none";
+  pdfSelectedInfo.style.display = "flex";
+}
+
+function clearPdfSelected() {
+  currentPdfFile = null;
+  pdfFileName.textContent       = "";
+  pdfPlaceholder.style.display  = "flex";
+  pdfSelectedInfo.style.display = "none";
+  pdfInput.value = "";
+}
+
+function handlePdfFile(file) {
+  if (!file || file.type !== "application/pdf") { alert("Solo se aceptan archivos PDF."); return; }
+  if (file.size > 100 * 1024 * 1024) { alert("El PDF es muy grande. Máx 100 MB."); return; }
+  showPdfSelected(file);
+  // Limpiar el campo de enlace externo si se sube PDF
+  document.getElementById("linkInput").value = "";
+}
+
+pdfUploadArea.addEventListener("click",    e => { if (e.target !== pdfRemoveBtn) pdfInput.click(); });
+pdfInput.addEventListener("change",        () => handlePdfFile(pdfInput.files[0]));
+pdfRemoveBtn.addEventListener("click",     e => { e.stopPropagation(); clearPdfSelected(); });
+pdfUploadArea.addEventListener("dragover", e => { e.preventDefault(); pdfUploadArea.classList.add("drag-over"); });
+pdfUploadArea.addEventListener("dragleave",() => pdfUploadArea.classList.remove("drag-over"));
+pdfUploadArea.addEventListener("drop",     e => { e.preventDefault(); pdfUploadArea.classList.remove("drag-over"); handlePdfFile(e.dataTransfer.files[0]); });
 
 // ── Libros: render ────────────────────────────────────────────────────────────
 let books = [];
@@ -396,6 +440,66 @@ async function deleteBook(id) {
   } catch { alert("Error de conexion."); }
 }
 
+// ── Menú contextual (clic derecho sobre tarjeta) ──────────────────────────────
+let contextMenu = null;
+
+function cerrarContextMenu() {
+  if (contextMenu) { contextMenu.remove(); contextMenu = null; }
+}
+
+function abrirContextMenu(e, bookId) {
+  e.preventDefault();
+  cerrarContextMenu();
+
+  const book = books.find(b => String(b.id) === String(bookId));
+  if (!book) return;
+
+  const menu = document.createElement("div");
+  menu.className = "admin-context-menu";
+  menu.innerHTML = `
+    <button data-action="edit"     data-id="${bookId}">✏️ Editar libro</button>
+    <button data-action="read"     data-id="${bookId}">📖 Leer libro</button>
+    <button data-action="featured" data-id="${bookId}">${book.destacado ? "⭐ Quitar destacado" : "⭐ Marcar destacado"}</button>
+    <hr>
+    <button data-action="delete" data-id="${bookId}" class="danger">🗑️ Eliminar libro</button>
+  `;
+
+  // Posición del menú — evitar que se salga de la pantalla
+  const x = Math.min(e.clientX, window.innerWidth  - 200);
+  const y = Math.min(e.clientY, window.innerHeight - 180);
+  menu.style.left = x + "px";
+  menu.style.top  = y + "px";
+
+  menu.addEventListener("click", e => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const { action, id } = btn.dataset;
+    cerrarContextMenu();
+    if (action === "edit")     openEditDialog(id);
+    if (action === "read")     openAdminViewer(id);
+    if (action === "featured") toggleFeatured(id, null);
+    if (action === "delete")   deleteBook(id);
+  });
+
+  document.body.appendChild(menu);
+  contextMenu = menu;
+}
+
+// Cerrar al hacer clic en cualquier otro lado
+document.addEventListener("click",       cerrarContextMenu);
+document.addEventListener("contextmenu", e => { if (!e.target.closest(".book-card")) cerrarContextMenu(); });
+
+// Escuchar clic derecho en el grid de libros del admin
+if (booksGrid) {
+  booksGrid.addEventListener("contextmenu", e => {
+    const card = e.target.closest(".book-card");
+    if (!card) return;
+    const btn = card.querySelector("[data-id]");
+    if (!btn) return;
+    abrirContextMenu(e, btn.dataset.id);
+  });
+}
+
 // ── Visor PDF / Drive ─────────────────────────────────────────────────────────
 function toDriveEmbed(url) {
   if (!url) return url;
@@ -407,6 +511,18 @@ function toDriveEmbed(url) {
   return url;
 }
 
+// Abre el libro desde el menú contextual
+function openAdminViewer(bookId) {
+  const book = books.find(b => String(b.id) === String(bookId));
+  if (!book || !book.enlace) { alert("Este libro no tiene PDF o enlace."); return; }
+  if (book.enlace.startsWith("/uploads/")) {
+    const pdfUrl = encodeURIComponent(`${API}${book.enlace}`);
+    const titulo = encodeURIComponent(book.titulo || "");
+    window.open(`/visor.html?pdf=${pdfUrl}&titulo=${titulo}`, "_blank");
+  } else {
+    openDriveViewer(book);
+  }
+}
 function openBookViewer(id) {
   const book = books.find(b => String(b.id) === String(id));
   if (!book) return;
@@ -466,20 +582,24 @@ document.getElementById("closeDialogButton")?.addEventListener("click", () => do
 // ── Agregar libro ─────────────────────────────────────────────────────────────
 bookForm.addEventListener("submit", async function (e) {
   e.preventDefault();
-  const enlace = document.getElementById("linkInput").value.trim();
-  if (enlace && !enlace.startsWith("http")) { alert("El enlace debe empezar con http:// o https://"); return; }
+  const enlaceExterno = document.getElementById("linkInput").value.trim();
+  if (enlaceExterno && !enlaceExterno.startsWith("http")) {
+    alert("El enlace externo debe empezar con http:// o https://");
+    return;
+  }
 
   const submitBtn = bookForm.querySelector("button[type=submit]");
   submitBtn.disabled = true; submitBtn.textContent = "Guardando...";
 
   try {
+    // Paso 1 — crear el libro (con portada si hay)
     const formData = new FormData();
     formData.append("titulo",      document.getElementById("titleInput").value.trim());
     formData.append("autor",       document.getElementById("authorInput").value.trim());
     formData.append("categoria",   document.getElementById("categoryInput").value);
     formData.append("anio",        document.getElementById("yearInput").value || "");
     formData.append("descripcion", document.getElementById("descriptionInput").value.trim());
-    formData.append("enlace",      enlace);
+    formData.append("enlace",      enlaceExterno);
     formData.append("disponible",  document.getElementById("availableInput").checked ? "true" : "false");
 
     if (currentCoverFile) {
@@ -492,9 +612,22 @@ bookForm.addEventListener("submit", async function (e) {
     const json = await res.json();
     if (!json.ok) { alert(json.error || "Error al guardar el libro."); return; }
 
+    const libroId = json.data.id;
+
+    // Paso 2 — subir el PDF si se seleccionó uno
+    if (currentPdfFile && libroId) {
+      submitBtn.textContent = "Subiendo PDF...";
+      const pdfData = new FormData();
+      pdfData.append("pdf", currentPdfFile, currentPdfFile.name);
+      const pdfRes  = await fetch(`${API}/api/libros/${libroId}/pdf`, { method: "POST", body: pdfData });
+      const pdfJson = await pdfRes.json();
+      if (!pdfJson.ok) { alert("Libro guardado pero hubo un error al subir el PDF."); }
+    }
+
     bookForm.reset();
     document.getElementById("yearInput").value = new Date().getFullYear();
     clearCoverPreview();
+    clearPdfSelected();
     renderBooks();
     showToast(`"${json.data.titulo}" agregado correctamente.`);
   } catch { alert("Error de conexion al guardar el libro."); }
@@ -506,9 +639,66 @@ const editDialog   = document.getElementById("editDialog");
 const editForm     = document.getElementById("editForm");
 const closeEditBtn = document.getElementById("closeEditDialog");
 
+// ── Variables de portada en edición ───────────────────────────────────────────
+let editCoverFile = null; // archivo nuevo seleccionado (o null si no cambió)
+
+const editCoverArea     = document.getElementById("editCoverArea");
+const editCoverInput    = document.getElementById("editCoverInput");
+const editCoverPreview  = document.getElementById("editCoverPreview");
+const editCoverRemove   = document.getElementById("editCoverRemove");
+const editCoverPH       = document.getElementById("editCoverPlaceholder");
+
+function setEditCoverPreview(src) {
+  editCoverPreview.src        = src;
+  editCoverPreview.style.display  = "block";
+  editCoverPH.style.display       = "none";
+  editCoverRemove.style.display   = "flex";
+}
+
+function clearEditCover() {
+  editCoverFile               = null;
+  editCoverPreview.src        = "";
+  editCoverPreview.style.display  = "none";
+  editCoverPH.style.display       = "flex";
+  editCoverRemove.style.display   = "none";
+}
+
+// Clic en el área → abre selector de archivo
+editCoverArea.addEventListener("click", e => {
+  if (e.target === editCoverRemove) return;
+  editCoverInput.click();
+});
+
+// Archivo seleccionado con el selector
+editCoverInput.addEventListener("change", () => {
+  const file = editCoverInput.files[0];
+  if (!file) return;
+  editCoverFile = file;
+  setEditCoverPreview(URL.createObjectURL(file));
+  editCoverInput.value = "";
+});
+
+// Drag & drop
+editCoverArea.addEventListener("dragover",  e => { e.preventDefault(); editCoverArea.classList.add("drag-over"); });
+editCoverArea.addEventListener("dragleave", ()  => editCoverArea.classList.remove("drag-over"));
+editCoverArea.addEventListener("drop", e => {
+  e.preventDefault();
+  editCoverArea.classList.remove("drag-over");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) {
+    editCoverFile = file;
+    setEditCoverPreview(URL.createObjectURL(file));
+  }
+});
+
+// Botón quitar portada
+editCoverRemove.addEventListener("click", e => { e.stopPropagation(); clearEditCover(); });
+
 function openEditDialog(id) {
   const book = books.find(b => String(b.id) === String(id));
   if (!book) return;
+
+  // Poblar categorías
   const sel = document.getElementById("editCategory");
   sel.innerHTML = "";
   categories.forEach(cat => {
@@ -517,13 +707,20 @@ function openEditDialog(id) {
     if (cat === book.categoria) o.selected = true;
     sel.appendChild(o);
   });
-  document.getElementById("editBookId").value      = book.id;
-  document.getElementById("editTitle").value       = book.titulo;
-  document.getElementById("editAuthor").value      = book.autor;
-  document.getElementById("editYear").value        = book.anio || "";
-  document.getElementById("editLink").value        = book.enlace || "";
-  document.getElementById("editDescription").value = book.descripcion || "";
-  document.getElementById("editAvailable").checked = !!book.disponible;
+
+  // Campos de texto
+  document.getElementById("editBookId").value       = book.id;
+  document.getElementById("editTitle").value        = book.titulo;
+  document.getElementById("editAuthor").value       = book.autor;
+  document.getElementById("editYear").value         = book.anio || "";
+  document.getElementById("editLink").value         = book.enlace || "";
+  document.getElementById("editDescription").value  = book.descripcion || "";
+  document.getElementById("editAvailable").checked  = !!book.disponible;
+
+  // Portada actual
+  clearEditCover();
+  if (book.portada) setEditCoverPreview(`${API}${book.portada}`);
+
   editDialog.showModal();
 }
 
@@ -536,20 +733,38 @@ editForm.addEventListener("submit", async function (e) {
   btn.disabled = true; btn.textContent = "Guardando...";
 
   try {
-    const body = {
-      titulo:      document.getElementById("editTitle").value.trim(),
-      autor:       document.getElementById("editAuthor").value.trim(),
-      categoria:   document.getElementById("editCategory").value,
-      anio:        document.getElementById("editYear").value || null,
-      enlace:      document.getElementById("editLink").value.trim(),
-      descripcion: document.getElementById("editDescription").value.trim(),
-      disponible:  document.getElementById("editAvailable").checked ? "true" : "false"
-    };
-    const res  = await fetch(`${API}/api/libros/${id}`, {
-      method:  "PUT",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body)
-    });
+    let res;
+
+    if (editCoverFile) {
+      // Si hay imagen nueva → FormData (multipart)
+      const fd = new FormData();
+      fd.append("titulo",      document.getElementById("editTitle").value.trim());
+      fd.append("autor",       document.getElementById("editAuthor").value.trim());
+      fd.append("categoria",   document.getElementById("editCategory").value);
+      fd.append("anio",        document.getElementById("editYear").value || "");
+      fd.append("enlace",      document.getElementById("editLink").value.trim());
+      fd.append("descripcion", document.getElementById("editDescription").value.trim());
+      fd.append("disponible",  document.getElementById("editAvailable").checked ? "true" : "false");
+      fd.append("portada",     editCoverFile, editCoverFile.name);
+      res = await fetch(`${API}/api/libros/${id}`, { method: "PUT", body: fd });
+    } else {
+      // Sin imagen nueva → JSON normal
+      const body = {
+        titulo:      document.getElementById("editTitle").value.trim(),
+        autor:       document.getElementById("editAuthor").value.trim(),
+        categoria:   document.getElementById("editCategory").value,
+        anio:        document.getElementById("editYear").value || null,
+        enlace:      document.getElementById("editLink").value.trim(),
+        descripcion: document.getElementById("editDescription").value.trim(),
+        disponible:  document.getElementById("editAvailable").checked ? "true" : "false"
+      };
+      res = await fetch(`${API}/api/libros/${id}`, {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(body)
+      });
+    }
+
     const json = await res.json();
     if (!json.ok) { alert(json.error || "Error al actualizar."); return; }
     renderBooks();

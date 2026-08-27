@@ -116,8 +116,7 @@ function getUserPlan() {
   return plans[session.plan || "free"] || plans.free;
 }
 function canReadMore() {
-  const plan = getUserPlan();
-  return plan.dailyLimit === Infinity || getDailyReads() < plan.dailyLimit;
+  return true; // modo desarrollo: sin límite de lecturas
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -188,7 +187,7 @@ function handleBookAction(e) {
   const btn = e.target.closest("[data-action]");
   if (!btn) return;
   const { action, id } = btn.dataset;
-  if (action === "read")       readBook(id);
+  if (action === "read")       readBook(id, btn);
   if (action === "favorite")   toggleFavorite(id, btn);
   if (action === "openReview") openReviewDialog(id);
 }
@@ -208,14 +207,50 @@ async function toggleFavorite(bookId, btn) {
   } catch { /* silencioso */ }
 }
 
-function readBook(bookId) {
+// ── Animaciones de página 3D ──────────────────────────────────────────────────
+function pasarSiguiente(card) {
+  card.classList.remove("pasar-siguiente");
+  void card.offsetWidth;                  // fuerza reflow → reinicia animación
+  card.classList.add("pasar-siguiente");
+}
+
+function pasarAnterior(card) {
+  card.classList.remove("pasar-anterior");
+  void card.offsetWidth;
+  card.classList.add("pasar-anterior");
+}
+
+function readBook(bookId, triggerBtn) {
   const book = books.find(b => String(b.id) === String(bookId));
   if (!book) return;
   if (!canReadMore()) { showLimitDialog(); return; }
   incrementDailyReads();
   addToHistory(bookId);
-  if (book.enlace && book.enlace.trim()) openPdfViewer(book);
-  else openBookDialog(bookId);
+
+  // Buscar la tarjeta más cercana al botón para animar
+  const card = triggerBtn ? triggerBtn.closest(".book-card") : null;
+
+  function abrirLibro() {
+    if (book.enlace && book.enlace.trim()) openPdfViewer(book);
+    else openBookDialog(bookId);
+  }
+
+  if (card) {
+    // Elegir dirección: impar → siguiente, par → anterior
+    if (Number(bookId) % 2 === 0) {
+      pasarAnterior(card);
+    } else {
+      pasarSiguiente(card);
+    }
+    // Esperar a que termine la animación y luego abrir
+    card.addEventListener("animationend", function handler() {
+      card.classList.remove("pasar-siguiente", "pasar-anterior");
+      card.removeEventListener("animationend", handler);
+      abrirLibro();
+    });
+  } else {
+    abrirLibro();
+  }
 }
 
 // ── Visor PDF ─────────────────────────────────────────────────────────────────
@@ -230,8 +265,19 @@ function toDriveEmbed(url) {
 }
 
 function openPdfViewer(book) {
+  const enlace = (book.enlace || "").trim();
+
+  // PDFs locales → visor interactivo con animación de páginas
+  if (enlace.startsWith("/uploads/")) {
+    const pdfUrl    = encodeURIComponent(`${API}${enlace}`);
+    const titulo    = encodeURIComponent(book.titulo || "");
+    window.open(`/visor.html?pdf=${pdfUrl}&titulo=${titulo}`, "_blank");
+    return;
+  }
+
+  // Google Drive u otros enlaces externos → iframe como fallback
   document.getElementById("pdfViewerDialog")?.remove();
-  const embedUrl = toDriveEmbed(book.enlace);
+  const embedUrl = toDriveEmbed(enlace);
   const viewer   = document.createElement("div");
   viewer.id = "pdfViewerDialog"; viewer.className = "pdf-viewer-overlay";
   viewer.innerHTML = `

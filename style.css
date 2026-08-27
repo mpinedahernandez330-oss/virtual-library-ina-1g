@@ -433,12 +433,8 @@ textarea { resize: vertical; }
   flex-direction: column;
   overflow: hidden;
   border-radius: 14px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.book-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s ease;
 }
 
 .book-cover {
@@ -1686,15 +1682,10 @@ body.dark .plan-badge-silver {
 .book-card:nth-child(9)  { animation-delay: 0.46s; }
 .book-card:nth-child(n+10) { animation-delay: 0.50s; }
 
-/* Hover: elevación + brillo en la portada */
+/* Transición base de la tarjeta (el hover 3D final está más abajo) */
 .book-card {
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-              box-shadow 0.25s ease;
-}
-
-.book-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s ease;
 }
 
 /* Portada: brillo deslizante al hacer hover sobre la tarjeta */
@@ -2465,9 +2456,8 @@ body.dark .plan-badge-silver {
 
 /* La tarjeta muestra todo su contenido sin cortarse */
 .book-card {
-  grid-template-rows: 200px auto !important;
   height: auto !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .book-body {
@@ -2488,7 +2478,7 @@ body.dark .plan-badge-silver {
 .book-description {
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clampatibilidad: 3;
+  -webkit-l: 3;
   -webkit-box-orient: vertical;
 }
 
@@ -2542,7 +2532,7 @@ body.dark .plan-badge-silver {
   display: flex !important;
   flex-direction: column !important;
   height: auto !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   border-radius: 12px !important;
 }
 
@@ -3711,4 +3701,162 @@ a.plan-badge {
 }
 .perfil-avatar-wrap:hover .perfil-avatar-overlay {
   opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════
+   ANIMACIÓN 3D DE LIBRO — voltear página al leer
+   ══════════════════════════════════════════════════════ */
+
+/* Perspectiva en el grid — así todos los hijos comparten el mismo espacio 3D */
+.books-grid {
+  perspective: 1800px;
+  perspective-origin: 50% 0%;
+}
+
+/* La tarjeta en sí usa transform-style flat; la perspectiva viene del padre */
+.book-card {
+  transform-style: flat;
+}
+
+/* Los hijos internos preservan 3D para el efecto de volteo */
+.book-card .book-cover,
+.book-card .book-body {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transform-origin: center;
+}
+
+/* Durante la animación de volteo, permitir que la tarjeta sobresalga del recorte */
+.book-card.pasar-siguiente,
+.book-card.pasar-anterior {
+  overflow: visible !important;
+  z-index: 10;
+}
+
+/* Siguiente — gira hacia la izquierda (abre libro) */
+.book-card.pasar-siguiente {
+  animation: pasarSiguiente 0.7s ease-in-out forwards;
+}
+
+@keyframes pasarSiguiente {
+  0%   { transform: rotateY(0deg); }
+  50%  { transform: rotateY(-90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+/* Anterior — gira hacia la derecha */
+.book-card.pasar-anterior {
+  animation: pasarAnterior 0.7s ease-in-out forwards;
+}
+
+@keyframes pasarAnterior {
+  0%   { transform: rotateY(0deg); }
+  50%  { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+/* Compatibilidad con clases anteriores */
+.book-card.pasar-derecha   { animation: pasarSiguiente 0.7s ease-in-out forwards; }
+.book-card.pasar-izquierda { animation: pasarAnterior  0.7s ease-in-out forwards; }
+
+/* Hover 3D suave — la tarjeta se inclina hacia el usuario */
+.book-card:hover {
+  transform: rotateY(-4deg) rotateX(2deg) translateY(-6px);
+  box-shadow: 8px 16px 40px rgba(0,0,0,0.18);
+  transition: transform 0.35s cubic-bezier(0.22,1,0.36,1),
+              box-shadow 0.35s ease;
+}
+
+/* Sombra de lomo del libro al hacer hover */
+.book-card:hover .book-cover::before {
+  opacity: 0.6;
+  width: 10px;
+  transition: width 0.35s ease, opacity 0.35s ease;
+}
+
+/* La portada brilla levemente al inclinarse */
+.book-card:hover .book-cover {
+  filter: brightness(1.1) saturate(1.1);
+  transition: filter 0.35s ease;
+}
+  
+  
+
+/* ══════════════════════════════════════════════════════
+   ADMIN — desactivar efectos 3D en el catálogo admin
+   Las tarjetas del admin usan diseño plano, sin perspectiva
+   ══════════════════════════════════════════════════════ */
+.admin-books-grid {
+  perspective: none !important;
+}
+
+.admin-books-grid .book-card {
+  transform: none !important;
+  animation: cardEntrance 0.35s ease both !important;
+  transition: box-shadow 0.2s ease, transform 0.2s ease !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: 180px auto !important;
+  height: auto !important;
+}
+
+.admin-books-grid .book-card:hover {
+  transform: translateY(-4px) scale(1.02) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
+}
+
+.admin-books-grid .book-cover {
+  height: 180px !important;
+  min-height: 180px !important;
+  max-height: 180px !important;
+}
+
+/* Menú contextual del admin */
+.admin-context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--surface, #1e1e2e);
+  border: 1px solid var(--line, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  padding: 6px;
+  min-width: 180px;
+  animation: contextMenuPop 0.15s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes contextMenuPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.admin-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text, #e0e0e0);
+  font-size: 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.admin-context-menu button:hover {
+  background: rgba(124,58,237,0.18);
+  color: #a78bfa;
+}
+
+.admin-context-menu button.danger:hover {
+  background: rgba(239,68,68,0.15);
+  color: #f87171;
+}
+
+.admin-context-menu hr {
+  border: none;
+  border-top: 1px solid var(--line, rgba(255,255,255,0.08));
+  margin: 4px 0;
 }
