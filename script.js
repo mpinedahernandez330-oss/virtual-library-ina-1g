@@ -90,33 +90,40 @@ async function addToHistory(bookId) {
   } catch { /* silencioso */ }
 }
 
-// ── Limite diario (se mantiene local por performance) ────────────────────────
-const DAILY_KEY = "vl-daily-reads";
-function getDailyReads() {
-  const today = new Date().toDateString();
-  const saved = JSON.parse(localStorage.getItem(DAILY_KEY) || "{}");
-  return saved.date !== today ? 0 : (saved.count || 0);
-}
-function incrementDailyReads() {
-  const today = new Date().toDateString();
-  localStorage.setItem(DAILY_KEY, JSON.stringify({ date: today, count: getDailyReads() + 1 }));
-}
-function getUserPlan() {
+// ── Membresía desde la BD ─────────────────────────────────────────────────────
+let membresiaCache = null; // cache en memoria para no hacer fetch en cada clic
+
+async function getMembresiaActual() {
   const session = getSession();
-  if (!session) return { key: "free", dailyLimit: 5 };
-  if (session.plan !== "free" && session.planExpiry && Date.now() > new Date(session.planExpiry).getTime()) {
-    session.plan = "free"; session.planExpiry = null;
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  }
-  const plans = {
-    free:    { key: "free",    dailyLimit: 5        },
-    silver:  { key: "silver",  dailyLimit: Infinity },
-    diamond: { key: "diamond", dailyLimit: Infinity }
-  };
-  return plans[session.plan || "free"] || plans.free;
+  if (!session?.id) return null;
+  try {
+    const res  = await fetch(`${API}/api/membresia/${session.id}`);
+    const json = await res.json();
+    if (json.ok) { membresiaCache = json.data; return json.data; }
+  } catch { /* silencioso */ }
+  return null;
 }
-function canReadMore() {
-  return true; // modo desarrollo: sin límite de lecturas
+
+async function canReadMore() {
+  const m = await getMembresiaActual();
+  if (!m) return false;
+  // Ilimitado si book_limit es muy alto (silver/diamond)
+  if (m.book_limit >= 999999) return true;
+  // Free: chequea libros disponibles hoy
+  return m.available_books > 0;
+}
+
+async function registrarLectura(bookId) {
+  const session = getSession();
+  if (!session?.id) return;
+  try {
+    await fetch(`${API}/api/membresia/${session.id}/leer`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ book_id: bookId })
+    });
+    membresiaCache = null; // invalidar cache
+  } catch { /* silencioso */ }
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -221,33 +228,42 @@ function pasarAnterior(card) {
 }
 
 function readBook(bookId, triggerBtn) {
-  const book = books.find(b => String(b.id) === String(bookId));
+  const book    = books.find(b => String(b.id) === String(bookId));
   if (!book) return;
-  if (!canReadMore()) { showLimitDialog(); return; }
-  incrementDailyReads();
-  addToHistory(bookId);
 
-  // Buscar la tarjeta más cercana al botón para animar
-  const card = triggerBtn ? triggerBtn.closest(".book-card") : null;
+  const session = getSession();
+  const card    = triggerBtn ? triggerBtn.closest(".book-card") : null;
 
   function abrirLibro() {
     if (book.enlace && book.enlace.trim()) openPdfViewer(book);
     else openBookDialog(bookId);
   }
 
-  if (card) {
-    // Elegir dirección: impar → siguiente, par → anterior
-    if (Number(bookId) % 2 === 0) {
-      pasarAnterior(card);
-    } else {
-      pasarSiguiente(card);
-    }
-    // Esperar a que termine la animación y luego abrir
-    card.addEventListener("animationend", function handler() {
-      card.classList.remove("pasar-siguiente", "pasar-anterior");
-      card.removeEventListener("animationend", handler);
-      abrirLibro();
-    });
+  // Verificar acceso via API (check_access equivalente)
+  if (session?.id) {
+    fetch(`${API}/api/membresia/${session.id}/acceso/${bookId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.allowed) {
+          showLimitDialog(data.message);
+          return;
+        }
+        addToHistory(bookId);
+        if (card) {
+          if (Number(bookId) % 2 === 0) pasarAnterior(card);
+          else                           pasarSiguiente(card);
+          card.addEventListener("animationend", function handler() {
+            card.classList.remove("pasar-siguiente", "pasar-anterior");
+            card.removeEventListener("animationend", handler);
+            abrirLibro();
+          });
+        } else { abrirLibro(); }
+      })
+      .catch(() => {
+        // Sin conexión: abrir directamente
+        addToHistory(bookId);
+        abrirLibro();
+      });
   } else {
     abrirLibro();
   }
@@ -335,7 +351,7 @@ function openBookDialog(bookId) {
   dialog.showModal();
 }
 
-function showLimitDialog() {
+function showLimitDialog(mensaje) {
   let d = document.getElementById("limitDialog");
   if (!d) {
     d = document.createElement("dialog");
@@ -343,8 +359,8 @@ function showLimitDialog() {
     d.innerHTML = `
       <div class="pay-dialog-content" style="text-align:center;">
         <div style="font-size:48px;margin-bottom:12px;">!</div>
-        <h2 class="pay-title">Limite diario alcanzado</h2>
-        <p class="pay-desc">Con el plan <strong>Gratis</strong> puedes leer 5 libros por dia.</p>
+        <h2 class="pay-title">Acceso limitado</h2>
+        <p class="pay-desc" id="limitDialogMsg"></p>
         <div style="display:grid;gap:10px;margin-top:16px;">
           <a class="primary-button" href="planes.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center;min-height:42px;">Ver planes</a>
           <button class="pay-cancel-btn" id="closeLimitDialog" type="button">Cerrar</button>
@@ -353,6 +369,8 @@ function showLimitDialog() {
     document.body.appendChild(d);
     document.getElementById("closeLimitDialog").addEventListener("click", () => d.close());
   }
+  document.getElementById("limitDialogMsg").textContent =
+    mensaje || "Has alcanzado el límite de tu plan. Actualiza para leer más.";
   d.showModal();
 }
 

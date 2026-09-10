@@ -37,21 +37,10 @@ async function renderPerfil() {
   document.getElementById("perfilNombre").textContent = session.name;
   document.getElementById("perfilEmail").textContent  = session.email;
 
-  // Badge plan
-  const planExpiry = session.planExpiry ? new Date(session.planExpiry).getTime() : null;
-  const expired    = planExpiry && Date.now() > planExpiry;
-  const planKey    = (expired || !session.plan) ? "free" : session.plan;
-  const badges     = {
-    free:    { label: "Gratis",   cls: "plan-badge-free"    },
-    silver:  { label: "Plata",    cls: "plan-badge-silver"  },
-    diamond: { label: "Diamante", cls: "plan-badge-diamond" }
-  };
-  const badge     = document.getElementById("perfilPlanBadge");
-  const badgeInfo = badges[planKey] || badges.free;
-  if (badge) { badge.textContent = badgeInfo.label; badge.classList.add(badgeInfo.cls); }
-
-  renderPlanCard(session, planKey, expired, planExpiry);
   setupAvatarUpload(session.email);
+
+  // Cargar membresía real desde la BD (equivalente a loadMembership() del PHP)
+  await loadMembership(session);
 
   // Historial desde la API
   await loadHistorial(session.email);
@@ -77,32 +66,108 @@ async function loadHistorial(email) {
   }
 }
 
-function renderPlanCard(session, planKey, expired, planExpiry) {
-  const card = document.getElementById("planCard");
-  if (!card) return;
-  const plans = {
-    free:    { name: "Gratis",   desc: "5 libros por dia, acceso al catalogo."   },
-    silver:  { name: "Plata",    desc: "Lectura ilimitada por 3 semanas."         },
-    diamond: { name: "Diamante", desc: "Lectura ilimitada + descarga por 1 mes."  }
-  };
-  const p = plans[planKey] || plans.free;
-  let expText = "";
-  if (planKey !== "free" && planExpiry) {
-    const expDate  = new Date(planExpiry).toLocaleDateString("es-ES");
-    const daysLeft = Math.ceil((planExpiry - Date.now()) / 86400000);
-    expText = expired
-      ? `<span class="plan-expired-tag">Expirado</span>`
-      : `<span class="plan-exp-tag">Vence el ${expDate} (${daysLeft} dias restantes)</span>`;
+// loadMembership — equivalente al PHP membership.php
+async function loadMembership(session) {
+  const badge = document.getElementById("perfilPlanBadge");
+
+  try {
+    const res  = await fetch(`${API}/api/membresia/${session.id}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error("sin datos");
+    const m = json.data;
+
+    // Badge del plan en el header
+    const badges = {
+      free:    { label: "Gratis",   cls: "plan-badge-free"    },
+      silver:  { label: "Plata",    cls: "plan-badge-silver"  },
+      diamond: { label: "Diamante", cls: "plan-badge-diamond" }
+    };
+    const bInfo = badges[m.plan] || badges.free;
+    if (badge) { badge.textContent = bInfo.label; badge.className = "plan-badge " + bInfo.cls; }
+
+    // Actualizar sesión local
+    const s  = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "{}");
+    s.plan   = m.plan;
+    s.planExpiry = m.expiration_date ? new Date(m.expiration_date).getTime() : null;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+
+    // Rellenar los campos del HTML (los mismos IDs del PHP)
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+    set("membershipName",  m.name);
+    set("membershipPrice", Number(m.price).toFixed(2));
+    set("booksUsed",       m.books_used_today ?? 0);
+    set("availableBooks",  m.book_limit >= 999999 ? "∞" : m.available_books);
+    set("expirationDate",  m.expiration_date
+      ? new Date(m.expiration_date).toLocaleDateString("es-ES")
+      : "Sin vencimiento");
+    set("daysRemaining",   m.days_remaining === null ? "∞" : m.days_remaining);
+
+    const statusEl = document.getElementById("membershipStatus");
+    if (statusEl) {
+      statusEl.textContent = m.active ? "Activa" : "Expirada";
+      statusEl.className   = m.active ? "plan-active-tag" : "plan-expired-tag";
+    }
+
+    // Marcar el botón del plan activo
+    highlightActivePlan(m.plan);
+
+  } catch {
+    const planKey = session.plan || "free";
+    const badges  = {
+      free:    { label: "Gratis",   cls: "plan-badge-free"    },
+      silver:  { label: "Plata",    cls: "plan-badge-silver"  },
+      diamond: { label: "Diamante", cls: "plan-badge-diamond" }
+    };
+    const bInfo = badges[planKey] || badges.free;
+    if (badge) { badge.textContent = bInfo.label; badge.className = "plan-badge " + bInfo.cls; }
+    const nm = document.getElementById("membershipName");
+    if (nm) nm.textContent = bInfo.label;
   }
-  card.innerHTML = `
-    <div class="perfil-plan-inner">
-      <div>
-        <strong class="perfil-plan-name">Plan ${p.name}</strong>
-        <p class="perfil-plan-desc">${p.desc}</p>
-        ${expText}
-      </div>
-    </div>`;
 }
+
+function highlightActivePlan(plan) {
+  const map = { free: 1, silver: 2, diamond: 3 };
+  const btns = document.querySelectorAll(".perfil-planes-grid .plan-btn");
+  btns.forEach(btn => {
+    btn.disabled = false;
+    btn.classList.remove("plan-btn-active");
+  });
+  const idx = (map[plan] || 1) - 1;
+  if (btns[idx]) {
+    btns[idx].textContent = "Plan actual";
+    btns[idx].disabled    = true;
+    btns[idx].classList.add("plan-btn-active");
+  }
+}
+
+// selectMembership — equivalente a activate_membership.php
+window.selectMembership = async function(membershipId, planKey) {
+  const session = getSession();
+  if (!session?.id) { alert("Debes iniciar sesión."); return; }
+
+  if (!planKey || planKey === "free") {
+    alert("El plan Gratis es el predeterminado. No requiere activación.");
+    return;
+  }
+
+  if (!confirm(`¿Activar el plan ${planKey === "silver" ? "Silver" : "Diamond"}?`)) return;
+
+  try {
+    const res  = await fetch(`${API}/api/membresia/${session.id}/suscribir`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ plan: planKey })
+    });
+    const json = await res.json();
+    alert(json.ok ? `¡Membresía activada! ${json.data?.message || ""}` : (json.error || "Error al activar."));
+    if (json.ok) await loadMembership(session);
+  } catch {
+    alert("No se pudo procesar la membresía.");
+  }
+};
+
+function renderPlanCard() { /* reemplazado por loadMembership */ }
 
 function renderHistorial(historial) {
   const list  = document.getElementById("historialList");

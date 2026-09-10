@@ -63,7 +63,7 @@
         <h2 class="plan-name">Plata</h2>
         <div class="plan-price">
           <span class="plan-amount">$2.50</span>
-          <span class="plan-period">/ 3 semanas</span>
+          <span class="plan-period">/ 2 meses</span>
         </div>
         <ul class="plan-features">
           <li>Libros ilimitados</li>
@@ -72,7 +72,7 @@
           <li>Sin limite diario</li>
           <li>Sin descargas</li>
         </ul>
-        <button class="plan-btn plan-btn-silver" id="btnSilver" type="button">Suscribirse — $2.50</button>
+        <button class="plan-btn plan-btn-silver" id="btnSilver" type="button">Suscribirse — $2.50 / 2 meses</button>
       </div>
 
       <!-- Plan Diamante -->
@@ -82,7 +82,7 @@
         <h2 class="plan-name">Diamante</h2>
         <div class="plan-price">
           <span class="plan-amount">$5.00</span>
-          <span class="plan-period">/ 1 mes</span>
+          <span class="plan-period">/ 4 meses</span>
         </div>
         <ul class="plan-features">
           <li>Libros ilimitados</li>
@@ -91,7 +91,7 @@
           <li>Sin limite diario</li>
           <li>Descargar libros</li>
         </ul>
-        <button class="plan-btn plan-btn-diamond" id="btnDiamond" type="button">Suscribirse — $5.00</button>
+        <button class="plan-btn plan-btn-diamond" id="btnDiamond" type="button">Suscribirse — $5.00 / 4 meses</button>
       </div>
 
     </div>
@@ -106,8 +106,30 @@
       <h2 class="pay-title" id="payTitle"></h2>
       <p class="pay-desc" id="payDesc"></p>
       <div class="pay-sim-box">
-        <p class="pay-sim-label">Simulacion de pago</p>
-        <p class="pay-sim-note">En produccion aqui se conectaria la pasarela de pagos real. Por ahora confirma para activar el plan de prueba.</p>
+        <p class="pay-sim-label">💳 Pago Simulado — ingresa datos de prueba</p>
+
+        <div class="pay-field">
+          <label>Número de tarjeta</label>
+          <input type="text" id="payCardNum" placeholder="4111 1111 1111 1111" maxlength="19" autocomplete="off">
+        </div>
+
+        <div class="pay-field-row">
+          <div class="pay-field">
+            <label>Expiración</label>
+            <input type="text" id="payCardExp" placeholder="MM/AA" maxlength="5">
+          </div>
+          <div class="pay-field">
+            <label>CVV</label>
+            <input type="password" id="payCardCvv" placeholder="123" maxlength="3">
+          </div>
+        </div>
+
+        <div class="pay-field">
+          <label>Nombre en la tarjeta</label>
+          <input type="text" id="payCardName" placeholder="MIGUEL PINEDA" maxlength="40">
+        </div>
+
+        <p class="pay-sim-note" id="paySimNote">⚠️ Datos de prueba — ningún cobro real se realizará.</p>
       </div>
       <div class="pay-actions">
         <button class="primary-button pay-confirm-btn" id="payConfirm" type="button">Confirmar y activar</button>

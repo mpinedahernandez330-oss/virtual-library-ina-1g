@@ -55,11 +55,88 @@
       </div>
     </div>
 
-    <!-- Plan activo -->
+    <!-- Plan activo + selección de membresía -->
     <div class="perfil-section" id="planSection">
-      <h2 class="perfil-section-title">Mi plan</h2>
-      <div class="perfil-plan-card" id="planCard"></div>
-      <a class="primary-button" href="planes.html" style="text-decoration:none;display:inline-flex;align-items:center;margin-top:14px;padding:0 20px;min-height:42px;">Cambiar plan</a>
+      <h2 class="perfil-section-title">Mi membresía</h2>
+
+      <!-- Estado actual (equivalente a membership-user) -->
+      <div class="perfil-plan-card" id="planCard">
+        <div class="perfil-plan-inner">
+          <div class="perfil-plan-header">
+            <strong class="perfil-plan-name">Membresía: <span id="membershipName">Cargando...</span></strong>
+            <span id="membershipStatus">-</span>
+          </div>
+          <div class="perfil-plan-stats">
+            <div class="perfil-plan-stat">
+              <strong id="membershipPrice">0.00</strong>
+              <span>Precio $</span>
+            </div>
+            <div class="perfil-plan-stat">
+              <strong id="booksUsed">0</strong>
+              <span>Libros usados hoy</span>
+            </div>
+            <div class="perfil-plan-stat">
+              <strong id="availableBooks">0</strong>
+              <span>Disponibles hoy</span>
+            </div>
+            <div class="perfil-plan-stat">
+              <strong id="daysRemaining">-</strong>
+              <span>Días restantes</span>
+            </div>
+          </div>
+          <p class="plan-exp-tag" style="margin-top:10px;">Vencimiento: <strong id="expirationDate">Sin vencimiento</strong></p>
+        </div>
+      </div>
+
+      <!-- Selección de planes (equivalente a memberships-container) -->
+      <h3 class="perfil-section-title" style="margin-top:24px;font-size:16px;">Cambiar plan</h3>
+      <div class="planes-grid perfil-planes-grid">
+
+        <div class="plan-card plan-free">
+          <div class="plan-icon">Gratis</div>
+          <h2 class="plan-name">Free</h2>
+          <div class="plan-price">
+            <span class="plan-amount">$0</span>
+            <span class="plan-period">siempre</span>
+          </div>
+          <ul class="plan-features">
+            <li>5 libros por día</li>
+            <li>Acceso al catálogo completo</li>
+          </ul>
+          <button class="plan-btn plan-btn-free" type="button" onclick="selectMembership(1,'free')">Elegir Free</button>
+        </div>
+
+        <div class="plan-card plan-silver">
+          <div class="plan-icon plan-icon-silver">Plata</div>
+          <h2 class="plan-name">Silver</h2>
+          <div class="plan-price">
+            <span class="plan-amount">$2.50</span>
+            <span class="plan-period">/ 2 meses</span>
+          </div>
+          <ul class="plan-features">
+            <li>Libros ilimitados</li>
+            <li>Sin límite diario</li>
+          </ul>
+          <button class="plan-btn plan-btn-silver" type="button" onclick="selectMembership(2,'silver')">Elegir Silver</button>
+        </div>
+
+        <div class="plan-card plan-diamond">
+          <div class="plan-badge-top">Más popular</div>
+          <div class="plan-icon plan-icon-diamond">Diamante</div>
+          <h2 class="plan-name">Diamond</h2>
+          <div class="plan-price">
+            <span class="plan-amount">$5.00</span>
+            <span class="plan-period">/ 4 meses</span>
+          </div>
+          <ul class="plan-features">
+            <li>Libros ilimitados</li>
+            <li>Sin límite diario</li>
+            <li>Descargar libros</li>
+          </ul>
+          <button class="plan-btn plan-btn-diamond" type="button" onclick="selectMembership(3,'diamond')">Elegir Diamond</button>
+        </div>
+
+      </div>
     </div>
 
     <!-- Historial de lectura -->

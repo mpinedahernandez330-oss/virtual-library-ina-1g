@@ -3860,3 +3860,122 @@ a.plan-badge {
   border-top: 1px solid var(--line, rgba(255,255,255,0.08));
   margin: 4px 0;
 }
+
+/* ══════════════════════════════════════════════════════
+   CAMPOS DE TARJETA — modal de pago simulado
+   ══════════════════════════════════════════════════════ */
+.pay-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.pay-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pay-field input {
+  padding: 10px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 15px;
+  transition: border-color 0.18s;
+  width: 100%;
+}
+
+.pay-field input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+
+.pay-field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.pay-field-row .pay-field {
+  flex: 1;
+}
+
+/* ══════════════════════════════════════════════════════
+   TARJETA DE MEMBRESÍA EN PERFIL
+   ══════════════════════════════════════════════════════ */
+.perfil-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.plan-active-tag {
+  background: #10b981;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.plan-expired-tag {
+  background: #f43f5e;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.perfil-plan-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.perfil-plan-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.perfil-plan-stat strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.perfil-plan-stat span {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .perfil-plan-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Grid de planes dentro del perfil ── */
+.perfil-planes-grid {
+  grid-template-columns: repeat(3, 1fr) !important;
+  max-width: 100% !important;
+  margin-top: 12px !important;
+}
+
+@media (max-width: 700px) {
+  .perfil-planes-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
