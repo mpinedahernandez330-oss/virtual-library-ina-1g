@@ -3979,3 +3979,114 @@ a.plan-badge {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   PREMIUM DASHBOARD — Silver y Diamond
+   ══════════════════════════════════════════════════════ */
+.dashboard-container {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 25px;
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-title {
+  color: var(--text);
+  margin-bottom: 20px;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.dashboard-stats-grid {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 140px;
+  background: var(--surface-2);
+  padding: 16px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid var(--line);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.stat-card h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card p {
+  margin: 10px 0 0 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.dashboard-content-layout {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.dashboard-list-block {
+  flex: 1;
+  min-width: 260px;
+  background: var(--surface-2);
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.dashboard-list-block h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.dashboard-list-block ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dashboard-list-block li {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-list-block li:last-child {
+  border-bottom: none;
+}
+
+.dashboard-list-block li strong {
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .dashboard-stats-grid    { flex-direction: column; }
+  .dashboard-content-layout { flex-direction: column; }
+}

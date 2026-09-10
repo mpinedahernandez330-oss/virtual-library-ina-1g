@@ -146,6 +146,37 @@
       <p class="empty-state" id="historialEmpty">Aun no has leido ningun libro.</p>
     </div>
 
+    <!-- Premium Dashboard (solo Silver y Diamond) -->
+    <div id="premium-dashboard-container" class="dashboard-container" style="display:none;">
+      <h2 class="dashboard-title">📊 Mi Dashboard Personal</h2>
+
+      <div class="dashboard-stats-grid">
+        <div class="stat-card">
+          <h3>Libros Leídos</h3>
+          <p id="dash-books-read">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Categoría Favorita</h3>
+          <p id="dash-fav-category">-</p>
+        </div>
+        <div class="stat-card">
+          <h3>Racha de Lectura</h3>
+          <p id="dash-reading-streak">0 días</p>
+        </div>
+      </div>
+
+      <div class="dashboard-content-layout">
+        <div class="dashboard-list-block">
+          <h3>📖 Últimos libros abiertos</h3>
+          <ul id="dash-recently-opened"></ul>
+        </div>
+        <div class="dashboard-list-block">
+          <h3>✨ Recomendados para ti</h3>
+          <ul id="dash-history-recommendations"></ul>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <script src="script.js"></script>

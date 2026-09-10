@@ -600,7 +600,8 @@ bookForm.addEventListener("submit", async function (e) {
     formData.append("anio",        document.getElementById("yearInput").value || "");
     formData.append("descripcion", document.getElementById("descriptionInput").value.trim());
     formData.append("enlace",      enlaceExterno);
-    formData.append("disponible",  document.getElementById("availableInput").checked ? "true" : "false");
+    formData.append("disponible",    document.getElementById("availableInput").checked ? "true" : "false");
+    formData.append("access_level",  document.getElementById("accessLevelInput")?.value || "free");
 
     if (currentCoverFile) {
       formData.append("portada", currentCoverFile);
@@ -717,6 +718,10 @@ function openEditDialog(id) {
   document.getElementById("editDescription").value  = book.descripcion || "";
   document.getElementById("editAvailable").checked  = !!book.disponible;
 
+  // Precargar access_level
+  const accSel = document.getElementById("editAccessLevel");
+  if (accSel) accSel.value = book.access_level || "free";
+
   // Portada actual
   clearEditCover();
   if (book.portada) setEditCoverPreview(`${API}${book.portada}`);
@@ -756,7 +761,8 @@ editForm.addEventListener("submit", async function (e) {
         anio:        document.getElementById("editYear").value || null,
         enlace:      document.getElementById("editLink").value.trim(),
         descripcion: document.getElementById("editDescription").value.trim(),
-        disponible:  document.getElementById("editAvailable").checked ? "true" : "false"
+        disponible:    document.getElementById("editAvailable").checked ? "true" : "false",
+      access_level:  document.getElementById("editAccessLevel")?.value || "free"
       };
       res = await fetch(`${API}/api/libros/${id}`, {
         method:  "PUT",

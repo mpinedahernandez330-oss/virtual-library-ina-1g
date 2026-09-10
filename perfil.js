@@ -229,3 +229,58 @@ document.getElementById("logoutBtn")?.addEventListener("click", () => {
 });
 
 renderPerfil();
+
+// ── Premium Dashboard (Silver y Diamond) ─────────────────────────────────────
+async function initializePremiumDashboard(currentUser) {
+  // 1. Verificar plan — solo silver y diamond
+  const userPlan = (currentUser.plan || "free").toLowerCase();
+  if (userPlan !== "silver" && userPlan !== "diamond") return;
+
+  // 2. Mostrar el contenedor
+  const dashboard = document.getElementById("premium-dashboard-container");
+  if (dashboard) dashboard.style.display = "block";
+
+  try {
+    // 3. Fetch al endpoint Node.js (equivalente a get_premium_stats.php)
+    const res  = await fetch(`${API}/api/dashboard/${encodeURIComponent(currentUser.email)}`);
+    const json = await res.json();
+    if (!json.ok) return;
+
+    const data = json.data;
+
+    // 4. Rellenar estadísticas
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set("dash-books-read",      data.booksRead       ?? 0);
+    set("dash-fav-category",    data.favoriteCategory || "Ninguna aún");
+    set("dash-reading-streak",  (data.streakDays ?? 0) + " días");
+
+    // 5. Últimos libros abiertos
+    const openedList = document.getElementById("dash-recently-opened");
+    if (openedList) {
+      openedList.innerHTML = data.recentlyOpened?.length > 0
+        ? data.recentlyOpened.map(b =>
+            `<li>📖 <strong>${escapeHtml(b.titulo)}</strong> — ${escapeHtml(b.autor)}</li>`
+          ).join("")
+        : "<li>No has abierto libros recientemente.</li>";
+    }
+
+    // 6. Recomendaciones personalizadas
+    const recsList = document.getElementById("dash-history-recommendations");
+    if (recsList) {
+      recsList.innerHTML = data.recommendations?.length > 0
+        ? data.recommendations.map(b =>
+            `<li>✨ <strong>${escapeHtml(b.titulo)}</strong> <span style="opacity:.7">(${escapeHtml(b.categoria)})</span></li>`
+          ).join("")
+        : "<li>Lee más libros para recibir recomendaciones.</li>";
+    }
+
+  } catch (err) {
+    console.error("Error al cargar el dashboard premium:", err);
+  }
+}
+
+// Inicializar dashboard después de cargar el perfil
+(function () {
+  const session = JSON.parse(sessionStorage.getItem("vl-user-session") || "null");
+  if (session) initializePremiumDashboard(session);
+})();

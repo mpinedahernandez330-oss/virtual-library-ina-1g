@@ -528,6 +528,75 @@ app.post("/api/resenas", async (req, res) => {
 });
 
 // =============================================================================
+// VALIDACIÓN DE LECTURA CON REGLAS DE PLAN
+// =============================================================================
+const PLAN_RULES = {
+  free:    { dailyLimit: 5,        accessRank: 0 },
+  silver:  { dailyLimit: Infinity, accessRank: 1 },
+  diamond: { dailyLimit: Infinity, accessRank: 2 }
+};
+
+app.post("/api/libros/:id/leer", async (req, res) => {
+  try {
+    const { user_email } = req.body;
+    if (!user_email) return fail(res, 400, "Se requiere el usuario para registrar la lectura.");
+
+    const user = await get(
+      "SELECT id, plan, plan_expiry FROM usuarios WHERE email = ?",
+      [user_email.toLowerCase()]
+    );
+    const book = await get(
+      "SELECT id, titulo, disponible, access_level FROM libros WHERE id = ?",
+      [req.params.id]
+    );
+
+    if (!user) return fail(res, 404, "Usuario no encontrado.");
+    if (!book) return fail(res, 404, "Libro no encontrado.");
+    if (!book.disponible) return fail(res, 403, "Este libro no esta disponible en este momento.");
+
+    // Verificar expiración del plan
+    let plan = user.plan || "free";
+    if (plan !== "free" && user.plan_expiry && Date.now() > Number(user.plan_expiry)) {
+      await run("UPDATE usuarios SET plan='free', plan_expiry=NULL WHERE id=?", [user.id]);
+      plan = "free";
+    }
+
+    const rules       = PLAN_RULES[plan]                          || PLAN_RULES.free;
+    const requiredRank = (PLAN_RULES[book.access_level || "free"] || PLAN_RULES.free).accessRank;
+
+    // Verificar nivel de acceso del libro
+    if (rules.accessRank < requiredRank) {
+      const requiredPlan = book.access_level === "diamond" ? "Diamante" : "Plata";
+      return fail(res, 403, `El libro "${book.titulo}" requiere el plan ${requiredPlan}.`);
+    }
+
+    // Verificar límite diario (usando historial_lecturas)
+    const hoy = new Date().toISOString().slice(0, 10);
+    const readsToday = (await get(
+      "SELECT COUNT(*) AS n FROM historial_lecturas WHERE user_email = ? AND DATE(FROM_UNIXTIME(leido_en/1000)) = ?",
+      [user_email.toLowerCase(), hoy]
+    )).n;
+
+    if (Number.isFinite(rules.dailyLimit) && readsToday >= rules.dailyLimit) {
+      const planName = plan === "free" ? "Gratis" : "Plata";
+      return fail(res, 429, `Has alcanzado las ${rules.dailyLimit} lecturas diarias de tu plan ${planName}.`);
+    }
+
+    // Registrar la lectura en historial_lecturas
+    await run(
+      "INSERT INTO historial_lecturas (user_email, libro_id, leido_en) VALUES (?,?,?)",
+      [user_email.toLowerCase(), book.id, Date.now()]
+    );
+
+    return ok(res, {
+      plan,
+      readsToday:  readsToday + 1,
+      dailyLimit:  Number.isFinite(rules.dailyLimit) ? rules.dailyLimit : null
+    });
+  } catch (err) { console.error(err); return fail(res, 500, "Error al validar la lectura."); }
+});
+
+// =============================================================================
 // HISTORIAL
 // =============================================================================
 app.post("/api/historial", async (req, res) => {
@@ -572,6 +641,96 @@ app.get("/api/stats", async (_req, res) => {
     );
     return ok(res, { total_libros, total_usuarios, total_lecturas, total_resenas, libros_disponibles, top_libros });
   } catch (err) { return fail(res, 500, "Error al obtener estadisticas."); }
+});
+
+// =============================================================================
+// PREMIUM DASHBOARD (Solo Silver y Diamond)
+// =============================================================================
+app.get("/api/dashboard/:email", async (req, res) => {
+  try {
+    const email = req.params.email.toLowerCase();
+
+    // Verificar que el usuario existe y tiene plan silver o diamond
+    const user = await get("SELECT id, plan, plan_expiry FROM usuarios WHERE email = ?", [email]);
+    if (!user) return fail(res, 404, "Usuario no encontrado.");
+
+    const plan = user.plan || "free";
+    if (plan === "free") return fail(res, 403, "El dashboard premium solo está disponible para planes Silver y Diamond.");
+
+    // 1. Total de libros leídos
+    const booksRead = (await get(
+      "SELECT COUNT(*) AS n FROM historial_lecturas WHERE user_email = ?",
+      [email]
+    )).n;
+
+    // 2. Categoría favorita
+    const favRow = await get(
+      `SELECT l.categoria, COUNT(*) AS total
+       FROM historial_lecturas h
+       JOIN libros l ON h.libro_id = l.id
+       WHERE h.user_email = ?
+       GROUP BY l.categoria
+       ORDER BY total DESC
+       LIMIT 1`,
+      [email]
+    );
+    const favoriteCategory = favRow ? favRow.categoria : "Sin datos";
+
+    // 3. Racha de días consecutivos leyendo
+    const lecturas = await all(
+      `SELECT DATE(FROM_UNIXTIME(leido_en/1000)) AS dia
+       FROM historial_lecturas
+       WHERE user_email = ?
+       GROUP BY dia
+       ORDER BY dia DESC`,
+      [email]
+    );
+    let streakDays = 0;
+    if (lecturas.length > 0) {
+      const hoy  = new Date().toISOString().slice(0, 10);
+      let fecha  = new Date(hoy);
+      for (const row of lecturas) {
+        const dia = String(row.dia).slice(0, 10);
+        if (dia === fecha.toISOString().slice(0, 10)) {
+          streakDays++;
+          fecha.setDate(fecha.getDate() - 1);
+        } else { break; }
+      }
+    }
+
+    // 4. Libros abiertos recientemente
+    const recentlyOpened = await all(
+      `SELECT l.id, l.titulo, l.autor, l.portada, l.color, h.leido_en
+       FROM historial_lecturas h
+       JOIN libros l ON h.libro_id = l.id
+       WHERE h.user_email = ?
+       ORDER BY h.leido_en DESC
+       LIMIT 5`,
+      [email]
+    );
+
+    // 5. Recomendaciones basadas en categoría favorita
+    const recommendations = await all(
+      `SELECT l.id, l.titulo, l.autor, l.categoria, l.portada, l.color
+       FROM libros l
+       WHERE l.categoria = ?
+         AND l.disponible = 1
+         AND l.id NOT IN (
+           SELECT libro_id FROM historial_lecturas WHERE user_email = ?
+         )
+       ORDER BY RAND()
+       LIMIT 5`,
+      [favoriteCategory, email]
+    );
+
+    return ok(res, {
+      booksRead,
+      favoriteCategory,
+      streakDays,
+      recentlyOpened,
+      recommendations
+    });
+  } catch (err) { console.error(err); return fail(res, 500, "Error al obtener datos del dashboard."); }
 });
 
 app.listen(PORT, () => {

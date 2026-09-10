@@ -186,6 +186,14 @@
               <input type="checkbox" id="availableInput" checked>
               Disponible
             </label>
+            <label>
+              ACCESO DEL LIBRO
+              <select id="accessLevelInput">
+                <option value="free">Gratis</option>
+                <option value="silver">Plata</option>
+                <option value="diamond">Diamante</option>
+              </select>
+            </label>
             <button class="primary-button" type="submit">Agregar libro</button>
           </div>
         </form>
@@ -281,7 +289,17 @@
           <textarea id="editLink" rows="3" placeholder="https://drive.google.com/..." style="resize:vertical;"></textarea>
         </label>
         <label>Descripcion<textarea id="editDescription" rows="3" maxlength="250"></textarea></label>
-        <label class="checkbox-label"><input type="checkbox" id="editAvailable"> Disponible</label>
+        <div class="form-footer-row">
+          <label class="checkbox-label"><input type="checkbox" id="editAvailable"> Disponible</label>
+          <label>
+            ACCESO DEL LIBRO
+            <select id="editAccessLevel">
+              <option value="free">Gratis</option>
+              <option value="silver">Plata</option>
+              <option value="diamond">Diamante</option>
+            </select>
+          </label>
+        </div>
         <button class="primary-button" type="submit">Guardar cambios</button>
       </form>
     </div>

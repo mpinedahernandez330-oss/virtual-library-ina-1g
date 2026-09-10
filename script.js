@@ -227,43 +227,53 @@ function pasarAnterior(card) {
   card.classList.add("pasar-anterior");
 }
 
-function readBook(bookId, triggerBtn) {
-  const book    = books.find(b => String(b.id) === String(bookId));
+async function readBook(bookId, triggerBtn) {
+  const book = books.find(b => String(b.id) === String(bookId));
   if (!book) return;
 
   const session = getSession();
-  const card    = triggerBtn ? triggerBtn.closest(".book-card") : null;
+  if (!session?.email) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  if (triggerBtn) triggerBtn.disabled = true;
+
+  try {
+    const res  = await fetch(`${API}/api/libros/${bookId}/leer`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ user_email: session.email })
+    });
+    const json = await res.json();
+
+    if (!json.ok) {
+      showLimitDialog(json.error);
+      return;
+    }
+  } catch {
+    showLimitDialog("No se pudo validar tu acceso. Comprueba la conexion con el servidor.");
+    return;
+  } finally {
+    if (triggerBtn) triggerBtn.disabled = false;
+  }
+
+  // Animación 3D antes de abrir
+  const card = triggerBtn ? triggerBtn.closest(".book-card") : null;
 
   function abrirLibro() {
     if (book.enlace && book.enlace.trim()) openPdfViewer(book);
     else openBookDialog(bookId);
   }
 
-  // Verificar acceso via API (check_access equivalente)
-  if (session?.id) {
-    fetch(`${API}/api/membresia/${session.id}/acceso/${bookId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (!data.allowed) {
-          showLimitDialog(data.message);
-          return;
-        }
-        addToHistory(bookId);
-        if (card) {
-          if (Number(bookId) % 2 === 0) pasarAnterior(card);
-          else                           pasarSiguiente(card);
-          card.addEventListener("animationend", function handler() {
-            card.classList.remove("pasar-siguiente", "pasar-anterior");
-            card.removeEventListener("animationend", handler);
-            abrirLibro();
-          });
-        } else { abrirLibro(); }
-      })
-      .catch(() => {
-        // Sin conexión: abrir directamente
-        addToHistory(bookId);
-        abrirLibro();
-      });
+  if (card) {
+    if (Number(bookId) % 2 === 0) pasarAnterior(card);
+    else                           pasarSiguiente(card);
+    card.addEventListener("animationend", function handler() {
+      card.classList.remove("pasar-siguiente", "pasar-anterior");
+      card.removeEventListener("animationend", handler);
+      abrirLibro();
+    });
   } else {
     abrirLibro();
   }
